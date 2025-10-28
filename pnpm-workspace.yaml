@@ -1,0 +1,8 @@
+# PNPM Workspace Configuration
+# This tells pnpm where our packages are located
+packages:
+  # All apps in the apps directory (frontend, backend)
+  - 'apps/*'
+  # Shared packages (types, utils, config)
+  - 'packages/*'
+

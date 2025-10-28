@@ -1,0 +1,162 @@
+// Prisma Schema
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// USER MODEL
+// ============================================
+
+model User {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String   @unique
+  password  String   // Hashed with bcrypt
+  name      String
+  role      UserRole @default(USER)
+
+  // Subscription
+  plan                  SubscriptionPlan @default(FREE)
+  stripeCustomerId      String?          @unique
+  stripeSubscriptionId  String?          @unique
+  subscriptionStatus    String?          // active, canceled, past_due
+
+  // Relationships
+  uploads  FileUpload[]
+  quizzes  Quiz[]
+  usage    UsageRecord[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum SubscriptionPlan {
+  FREE
+  PRO
+}
+
+// ============================================
+// FILE UPLOAD MODEL
+// ============================================
+
+model FileUpload {
+  id            String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId        String   @db.ObjectId
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fileName      String
+  originalName  String
+  fileType      FileType
+  fileSize      Int      // in bytes
+  filePath      String   // Storage path
+  extractedText String?  // Parsed content
+
+  status        UploadStatus @default(PENDING)
+  error         String?
+
+  // Relationship
+  quiz          Quiz?
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@map("file_uploads")
+}
+
+enum FileType {
+  PDF
+  DOCX
+  TXT
+}
+
+enum UploadStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ============================================
+// QUIZ MODEL
+// ============================================
+
+model Quiz {
+  id             String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId         String   @db.ObjectId
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  fileUploadId   String   @unique @db.ObjectId
+  fileUpload     FileUpload @relation(fields: [fileUploadId], references: [id], onDelete: Cascade)
+
+  title          String
+  questions      Json     // Array of QuizQuestion objects
+  questionCount  Int
+
+  // QTI Export
+  qtiFilePath    String?  // Path to generated QTI ZIP
+  qtiFileUrl     String?  // Download URL
+
+  plan           SubscriptionPlan
+  hasWatermark   Boolean  @default(false)
+
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@map("quizzes")
+}
+
+// ============================================
+// USAGE TRACKING MODEL
+// ============================================
+
+model UsageRecord {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  action    UsageAction
+  plan      SubscriptionPlan
+  metadata  Json?    // Additional context
+
+  createdAt DateTime @default(now())
+
+  @@map("usage_records")
+  @@index([userId, createdAt])
+}
+
+enum UsageAction {
+  UPLOAD
+  QUIZ_GENERATION
+  QTI_EXPORT
+}
+
+// ============================================
+// REFRESH TOKEN MODEL (for JWT)
+// ============================================
+
+model RefreshToken {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId    String   @db.ObjectId
+  token     String   @unique
+  expiresAt DateTime
+
+  createdAt DateTime @default(now())
+
+  @@map("refresh_tokens")
+  @@index([userId])
+  @@index([expiresAt])
+}
+
