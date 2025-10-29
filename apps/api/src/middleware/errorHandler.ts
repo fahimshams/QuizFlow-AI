@@ -12,7 +12,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { logger } from '@/config/logger.js';
 import { env } from '@/config/env.js';
-import { APIError } from '@quizflow/types';
+import type { APIError } from '@quizflow/types';
 
 /**
  * Custom API Error Class

@@ -25,7 +25,8 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      router.push('/dashboard');
+      // Redirect to dashboard and force a full refresh
+      window.location.href = '/dashboard';
     } catch (err: any) {
       setError(err.message || 'Login failed');
     } finally {

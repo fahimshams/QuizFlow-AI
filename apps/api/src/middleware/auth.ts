@@ -9,10 +9,17 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { env } from '@/config/env.js';
 import { AppError } from './errorHandler.js';
-import { User, UserRole } from '@quizflow/types';
+import type { User } from '@quizflow/types';
+
+// Local enum to avoid runtime import issues
+// Values must match Prisma's UserRole enum
+export enum UserRole {
+  USER = 'USER',
+  ADMIN = 'ADMIN',
+}
 
 // Extend Express Request type to include user
 declare global {
@@ -55,7 +62,7 @@ export const authenticate = async (
       id: decoded.userId,
       email: decoded.email,
       role: decoded.role,
-    } as User;
+    } as unknown as User;
 
     next();
   } catch (error) {
@@ -93,11 +100,11 @@ export const authorize = (...roles: UserRole[]) => {
 export const generateTokens = (payload: JWTPayload) => {
   const accessToken = jwt.sign(payload, env.JWT_ACCESS_SECRET, {
     expiresIn: env.JWT_ACCESS_EXPIRES,
-  });
+  } as SignOptions);
 
   const refreshToken = jwt.sign(payload, env.JWT_REFRESH_SECRET, {
     expiresIn: env.JWT_REFRESH_EXPIRES,
-  });
+  } as SignOptions);
 
   return { accessToken, refreshToken };
 };

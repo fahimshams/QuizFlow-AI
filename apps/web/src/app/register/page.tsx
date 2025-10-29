@@ -26,7 +26,8 @@ export default function RegisterPage() {
 
     try {
       await register(email, password, name);
-      router.push('/dashboard');
+      // Redirect to dashboard and force a full refresh
+      window.location.href = '/dashboard';
     } catch (err: any) {
       setError(err.message || 'Registration failed');
     } finally {

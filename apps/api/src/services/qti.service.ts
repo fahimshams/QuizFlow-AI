@@ -16,7 +16,7 @@ import archiver from 'archiver';
 import fs from 'fs/promises';
 import { createWriteStream } from 'fs';
 import path from 'path';
-import { QuizQuestion } from '@quizflow/types';
+import type { QuizQuestion } from '@quizflow/types';
 import { AppError } from '@/middleware/errorHandler.js';
 import { logger } from '@/config/logger.js';
 
@@ -161,7 +161,6 @@ function generateQuestionXML(
   const responses = question.options
     .map((option, optIndex) => {
       const optionId = `option_${optIndex + 1}`;
-      const isCorrect = option === question.correctAnswer;
 
       return `
       <response_label ident="${optionId}">

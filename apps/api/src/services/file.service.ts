@@ -10,10 +10,10 @@
  */
 
 import fs from 'fs/promises';
-import path from 'path';
 import { AppError } from '@/middleware/errorHandler.js';
 import { prisma } from '@/config/database.js';
-import { env } from '@/config/env.js';
+import { PLAN_LIMITS_BY_NAME } from '@/config/constants.js';
+// @ts-ignore - pdf-parse doesn't have types
 import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 import { FileType, UploadStatus } from '@prisma/client';
@@ -210,13 +210,15 @@ export const checkUploadLimit = async (userId: string): Promise<boolean> => {
     throw new AppError(404, 'User not found');
   }
 
-  // Free plan: 1 upload per week
-  if (user.plan === 'FREE') {
-    return user.usage.length < 1;
+  // Get plan limits
+  const planLimits = PLAN_LIMITS_BY_NAME[user.plan as 'FREE' | 'PRO'];
+
+  // Check against plan limit
+  if (planLimits.uploadsPerWeek === Infinity) {
+    return true; // Unlimited
   }
 
-  // Pro plan: unlimited
-  return true;
+  return user.usage.length < planLimits.uploadsPerWeek;
 };
 
 /**

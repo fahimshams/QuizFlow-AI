@@ -11,8 +11,8 @@
 import bcrypt from 'bcryptjs';
 import { prisma } from '@/config/database.js';
 import { AppError } from '@/middleware/errorHandler.js';
-import { generateTokens, verifyRefreshToken } from '@/middleware/auth.js';
-import { User, UserRole, SubscriptionPlan } from '@prisma/client';
+import { generateTokens, verifyRefreshToken, UserRole } from '@/middleware/auth.js';
+import { User, UserRole as PrismaUserRole, SubscriptionPlan } from '@prisma/client';
 
 /**
  * Register new user
@@ -40,7 +40,7 @@ export const registerUser = async (
       email,
       password: hashedPassword,
       name,
-      role: UserRole.USER,
+      role: PrismaUserRole.USER,
       plan: SubscriptionPlan.FREE,
     },
   });
@@ -49,7 +49,7 @@ export const registerUser = async (
   const tokens = generateTokens({
     userId: user.id,
     email: user.email,
-    role: user.role,
+    role: user.role as UserRole,
   });
 
   // Store refresh token
@@ -94,7 +94,7 @@ export const loginUser = async (
   const tokens = generateTokens({
     userId: user.id,
     email: user.email,
-    role: user.role,
+    role: user.role as UserRole,
   });
 
   // Store refresh token

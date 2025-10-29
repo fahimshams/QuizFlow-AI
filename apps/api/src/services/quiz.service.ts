@@ -12,10 +12,10 @@ import { prisma } from '@/config/database.js';
 import { AppError } from '@/middleware/errorHandler.js';
 import { logger } from '@/config/logger.js';
 import { env } from '@/config/env.js';
+import { PLAN_LIMITS_BY_NAME } from '@/config/constants.js';
 import * as openaiService from './openai.service.js';
 import * as qtiService from './qti.service.js';
 import * as fileService from './file.service.js';
-import { PLAN_LIMITS } from '@quizflow/types';
 
 interface GenerateQuizOptions {
   userId: string;
@@ -47,7 +47,7 @@ export const generateQuiz = async (options: GenerateQuizOptions) => {
   }
 
   // Determine question count based on plan
-  const planLimits = PLAN_LIMITS[user.plan];
+  const planLimits = PLAN_LIMITS_BY_NAME[user.plan as 'FREE' | 'PRO'];
   const requestedCount = questionCount || planLimits.questionsPerQuiz;
   const finalCount = Math.min(requestedCount, planLimits.questionsPerQuiz);
 
@@ -159,8 +159,10 @@ export const deleteQuiz = async (quizId: string, userId: string) => {
 
   // Delete QTI file
   try {
-    const fs = await import('fs/promises');
-    await fs.unlink(quiz.qtiFilePath);
+    if (quiz.qtiFilePath) {
+      const fs = await import('fs/promises');
+      await fs.unlink(quiz.qtiFilePath);
+    }
   } catch (error) {
     logger.error('Error deleting QTI file', error);
   }
