@@ -141,6 +141,16 @@ export const createApp = (): Application => {
   app.use('/api/quiz', quizRoutes);
   app.use('/api/subscription', subscriptionRoutes);
 
+  // ============================================
+  // STATIC FILE SERVING
+  // ============================================
+
+  /**
+   * Serve uploaded files (QTI exports, etc.)
+   * Must be after API routes to avoid conflicts
+   */
+  app.use('/uploads', express.static(env.UPLOAD_DIR));
+
   /**
    * 404 handler
    * Must be after all routes

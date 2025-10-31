@@ -39,17 +39,28 @@ export const generateQTIPackage = async (
     const tempDir = path.join('temp', `qti_${Date.now()}`);
     await fs.mkdir(tempDir, { recursive: true });
 
+    const identifier = `assessment_${Date.now()}`;
+
     // Generate manifest
-    const manifest = generateManifest(title, questions.length);
+    const manifest = generateManifest(title, questions.length, identifier);
     await fs.writeFile(path.join(tempDir, 'imsmanifest.xml'), manifest);
 
-    // Generate assessment XML
-    const assessment = generateAssessmentXML(title, questions, hasWatermark);
-    const assessmentDir = path.join(tempDir, 'assessment');
+    // Create non_cc_assessments directory (Canvas requirement)
+    const assessmentDir = path.join(tempDir, 'non_cc_assessments');
     await fs.mkdir(assessmentDir, { recursive: true });
+
+    // Generate assessment XML
+    const assessment = generateAssessmentXML(title, questions, hasWatermark, identifier);
     await fs.writeFile(
-      path.join(assessmentDir, 'assessment.xml'),
+      path.join(assessmentDir, `${identifier}.xml.qti`),
       assessment
+    );
+
+    // Generate assessment metadata
+    const metadata = generateAssessmentMeta(title, identifier, questions.length);
+    await fs.writeFile(
+      path.join(assessmentDir, `${identifier}.xml`),
+      metadata
     );
 
     // Create ZIP package
@@ -76,18 +87,19 @@ export const generateQTIPackage = async (
 /**
  * Generate IMS Manifest (required for QTI package)
  */
-function generateManifest(title: string, questionCount: number): string {
-  const identifier = `quiz_${Date.now()}`;
+function generateManifest(title: string, questionCount: number, identifier: string): string {
+  const manifestId = `manifest_${Date.now()}`;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
-<manifest identifier="${identifier}"
-          xmlns="http://www.imsglobal.org/xsd/imscp_v1p1"
+<manifest identifier="${manifestId}"
+          xmlns="http://www.imsglobal.org/xsd/imscc/imscp_v1p1"
+          xmlns:lom="http://ltsc.ieee.org/xsd/imscc/LOM/resource"
           xmlns:imsmd="http://www.imsglobal.org/xsd/imsmd_v1p2"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-          xsi:schemaLocation="http://www.imsglobal.org/xsd/imscp_v1p1 http://www.imsglobal.org/xsd/imscp_v1p1.xsd http://www.imsglobal.org/xsd/imsmd_v1p2 http://www.imsglobal.org/xsd/imsmd_v1p2p2.xsd">
+          xsi:schemaLocation="http://www.imsglobal.org/xsd/imscc/imscp_v1p1 http://www.imsglobal.org/profile/cc/ccv1p1/ccv1p1_imscp_v1p2_v1p0.xsd http://ltsc.ieee.org/xsd/imscc/LOM/resource http://www.imsglobal.org/profile/cc/ccv1p1/LOM/ccv1p1_lomresource_v1p0.xsd http://www.imsglobal.org/xsd/imsmd_v1p2 http://www.imsglobal.org/xsd/imsmd_v1p2p2.xsd">
   <metadata>
-    <schema>IMS Content</schema>
-    <schemaversion>1.1.3</schemaversion>
+    <schema>IMS Common Cartridge</schema>
+    <schemaversion>1.1.0</schemaversion>
     <imsmd:lom>
       <imsmd:general>
         <imsmd:title>
@@ -101,11 +113,38 @@ function generateManifest(title: string, questionCount: number): string {
   </metadata>
   <organizations/>
   <resources>
-    <resource identifier="assessment_resource" type="imsqti_xmlv1p2/imscc_xmlv1p1/assessment" href="assessment/assessment.xml">
-      <file href="assessment/assessment.xml"/>
+    <resource identifier="${identifier}_meta" type="associatedcontent/imscc_xmlv1p1/learning-application-resource" href="${identifier}.xml">
+      <file href="non_cc_assessments/${identifier}.xml"/>
+    </resource>
+    <resource identifier="${identifier}" type="imsqti_xmlv1p2/imscc_xmlv1p1/assessment" href="non_cc_assessments/${identifier}.xml.qti">
+      <file href="non_cc_assessments/${identifier}.xml.qti"/>
+      <dependency identifierref="${identifier}_meta"/>
     </resource>
   </resources>
 </manifest>`;
+}
+
+/**
+ * Generate Canvas Assessment Metadata XML
+ */
+function generateAssessmentMeta(title: string, identifier: string, questionCount: number): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<quiz identifier="${identifier}" xmlns="http://canvas.instructure.com/xsd/cccv1p0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://canvas.instructure.com/xsd/cccv1p0 https://canvas.instructure.com/xsd/cccv1p0.xsd">
+  <title>${escapeXml(title)}</title>
+  <description></description>
+  <shuffle_answers>false</shuffle_answers>
+  <scoring_policy>keep_highest</scoring_policy>
+  <quiz_type>assignment</quiz_type>
+  <points_possible>${questionCount}</points_possible>
+  <allowed_attempts>1</allowed_attempts>
+  <assignment identifier="${identifier}_assignment">
+    <title>${escapeXml(title)}</title>
+    <assignment_group_identifier_ref></assignment_group_identifier_ref>
+    <points_possible>${questionCount}</points_possible>
+    <grading_type>points</grading_type>
+    <submission_types>online_quiz</submission_types>
+  </assignment>
+</quiz>`;
 }
 
 /**
@@ -114,9 +153,9 @@ function generateManifest(title: string, questionCount: number): string {
 function generateAssessmentXML(
   title: string,
   questions: QuizQuestion[],
-  hasWatermark?: boolean
+  hasWatermark: boolean = false,
+  identifier: string
 ): string {
-  const assessmentId = `assessment_${Date.now()}`;
   const watermark = hasWatermark
     ? '\n<!-- Generated by QuizFlow AI - Free Tier -->'
     : '';
@@ -129,7 +168,7 @@ function generateAssessmentXML(
 <questestinterop xmlns="http://www.imsglobal.org/xsd/ims_qtiasiv1p2"
                  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
                  xsi:schemaLocation="http://www.imsglobal.org/xsd/ims_qtiasiv1p2 http://www.imsglobal.org/xsd/ims_qtiasiv1p2p1.xsd">${watermark}
-  <assessment ident="${assessmentId}" title="${escapeXml(title)}">
+  <assessment ident="${identifier}" title="${escapeXml(title)}">
     <qtimetadata>
       <qtimetadatafield>
         <fieldlabel>qmd_timelimit</fieldlabel>
