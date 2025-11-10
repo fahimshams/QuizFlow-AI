@@ -30,6 +30,7 @@ export interface User {
   plan: SubscriptionPlan;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
+  subscriptionStatus?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }

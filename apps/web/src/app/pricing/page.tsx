@@ -2,12 +2,84 @@
  * Pricing Page
  */
 
+'use client';
+
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import { getCurrentUser, isAuthenticated } from '@/lib/auth';
+import api from '@/lib/axios';
 
 export default function PricingPage() {
+  const [user, setUser] = useState<any>(null);
+  const [isAuth, setIsAuth] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isUpgrading, setIsUpgrading] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const authStatus = isAuthenticated();
+      setIsAuth(authStatus);
+
+      if (authStatus) {
+        const userData = await getCurrentUser();
+        setUser(userData);
+      }
+      setIsLoading(false);
+    };
+
+    checkAuth();
+
+    // Check for upgrade status in URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const upgradeStatus = urlParams.get('upgrade');
+
+    if (upgradeStatus === 'success') {
+      setTimeout(() => {
+        alert('🎉 Successfully upgraded to Pro! Please refresh to see your new features.');
+        // Remove the query parameter
+        window.history.replaceState({}, '', '/pricing');
+      }, 500);
+    } else if (upgradeStatus === 'cancelled') {
+      setTimeout(() => {
+        alert('Upgrade cancelled. You can upgrade anytime!');
+        window.history.replaceState({}, '', '/pricing');
+      }, 500);
+    }
+  }, []);
+
+  const handleUpgradeToPro = async () => {
+    if (!isAuth) {
+      window.location.href = '/register';
+      return;
+    }
+
+    // Redirect to upgrade page for test mode
+    window.location.href = '/upgrade';
+
+    /* For production, use this:
+    setIsUpgrading(true);
+    try {
+      const response = await api.post('/subscription/checkout', {
+        successUrl: `${window.location.origin}/dashboard?upgrade=success`,
+        cancelUrl: `${window.location.origin}/pricing?upgrade=cancelled`,
+      });
+
+      if (response.data.url) {
+        window.location.href = response.data.url;
+      }
+    } catch (error: any) {
+      console.error('Checkout error:', error);
+      alert(error.message || 'Failed to start checkout. Please try again.');
+      setIsUpgrading(false);
+    }
+    */
+  };
+
+  const isPro = user?.plan === 'PRO';
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -21,6 +93,19 @@ export default function PricingPage() {
           <p className="text-xl text-gray-600">
             Choose the plan that fits your needs
           </p>
+          {isAuth && user && (
+            <div className="mt-6 inline-block">
+              <div className={`px-6 py-3 rounded-full ${
+                isPro
+                  ? 'bg-primary-100 text-primary-800 border-2 border-primary-500'
+                  : 'bg-gray-100 text-gray-800 border-2 border-gray-300'
+              }`}>
+                <span className="font-semibold">
+                  Current Plan: {isPro ? '✨ Pro' : 'Free'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Pricing Cards */}
@@ -103,11 +188,25 @@ export default function PricingPage() {
                   </span>
                 </li>
               </ul>
-              <Link href="/register">
-                <Button fullWidth variant="outline">
-                  Get Started
+              {isLoading ? (
+                <Button fullWidth variant="outline" disabled>
+                  Loading...
                 </Button>
-              </Link>
+              ) : !isAuth ? (
+                <Link href="/register">
+                  <Button fullWidth variant="outline">
+                    Get Started
+                  </Button>
+                </Link>
+              ) : !isPro ? (
+                <Button fullWidth variant="outline" disabled>
+                  Current Plan
+                </Button>
+              ) : (
+                <Button fullWidth variant="outline" disabled>
+                  ✓ Your Plan
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -190,11 +289,29 @@ export default function PricingPage() {
                   <span className="font-medium">Priority support</span>
                 </li>
               </ul>
-              <Link href="/register">
-                <Button fullWidth>
-                  Upgrade to Pro
+              {isLoading ? (
+                <Button fullWidth disabled>
+                  Loading...
                 </Button>
-              </Link>
+              ) : isPro ? (
+                <Button fullWidth disabled>
+                  ✓ Current Plan
+                </Button>
+              ) : isAuth ? (
+                <Button
+                  fullWidth
+                  onClick={handleUpgradeToPro}
+                  disabled={isUpgrading}
+                >
+                  {isUpgrading ? 'Redirecting...' : 'Upgrade to Pro'}
+                </Button>
+              ) : (
+                <Link href="/register">
+                  <Button fullWidth>
+                    Get Started
+                  </Button>
+                </Link>
+              )}
             </CardContent>
           </Card>
         </div>

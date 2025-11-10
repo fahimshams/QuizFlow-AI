@@ -16,12 +16,13 @@ export const generateQuiz = asyncHandler(async (req: Request, res: Response) => 
     throw new AppError(401, 'User not authenticated');
   }
 
-  const { fileId, questionCount, title } = req.body;
+  const { fileId, questionCount, title, filename } = req.body;
 
   logger.info('Quiz generation requested', {
     userId: req.user.id,
     fileId,
     questionCount,
+    filename,
   });
 
   const result = await quizService.generateQuiz({
@@ -29,6 +30,7 @@ export const generateQuiz = asyncHandler(async (req: Request, res: Response) => 
     fileId,
     questionCount,
     title,
+    filename,
   });
 
   logger.info('Quiz generated', {
@@ -96,6 +98,70 @@ export const deleteQuiz = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     message: 'Quiz deleted successfully',
+  });
+});
+
+/**
+ * PATCH /api/quiz/:id
+ * Update quiz questions
+ */
+export const updateQuiz = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new AppError(401, 'User not authenticated');
+  }
+
+  const { questions, filename } = req.body;
+
+  if (!questions || !Array.isArray(questions)) {
+    throw new AppError(400, 'Questions array is required');
+  }
+
+  const result = await quizService.updateQuizQuestions(
+    req.params.id,
+    req.user.id,
+    questions,
+    filename
+  );
+
+  logger.info('Quiz updated', {
+    userId: req.user.id,
+    quizId: req.params.id,
+    filename,
+  });
+
+  res.status(200).json({
+    success: true,
+    message: 'Quiz updated successfully',
+    data: result,
+  });
+});
+
+/**
+ * POST /api/quiz/generate-question
+ * Generate a single question for replacement
+ */
+export const generateSingleQuestion = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new AppError(401, 'User not authenticated');
+  }
+
+  const { fileUploadId, existingQuestions } = req.body;
+
+  if (!fileUploadId) {
+    throw new AppError(400, 'File upload ID is required');
+  }
+
+  const question = await quizService.generateSingleQuestion(
+    fileUploadId,
+    req.user.id,
+    existingQuestions || []
+  );
+
+  res.status(200).json({
+    success: true,
+    data: {
+      question,
+    },
   });
 });
 

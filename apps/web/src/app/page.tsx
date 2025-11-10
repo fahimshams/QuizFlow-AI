@@ -9,12 +9,26 @@
  * - Simple, scannable layout
  */
 
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardTitle } from '@/components/ui/Card';
+import { isAuthenticated } from '@/lib/auth';
 
 export default function HomePage() {
+  const router = useRouter();
+
+  // Redirect authenticated users to dashboard
+  useEffect(() => {
+    if (isAuthenticated()) {
+      router.push('/dashboard');
+    }
+  }, [router]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary-50 to-white">
       <Navbar />

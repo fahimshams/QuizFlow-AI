@@ -153,6 +153,89 @@ Return your response as a JSON object in this exact format:
 };
 
 /**
+ * Generate a single question (for replacement, ensuring uniqueness)
+ */
+export const generateSingleQuestion = async (
+  text: string,
+  existingQuestions: string[]
+): Promise<QuizQuestion> => {
+  const existingQuestionsText = existingQuestions.length > 0
+    ? `\n\nIMPORTANT: Do NOT generate any of these existing questions:\n${existingQuestions.map((q, i) => `${i + 1}. ${q}`).join('\n')}`
+    : '';
+
+  const prompt = `Based on the following content, generate ONE multiple-choice question with 4 options.
+${existingQuestionsText}
+
+Content:
+${text.substring(0, 3000)}
+
+Generate exactly ONE question in this JSON format:
+{
+  "question": "your question here",
+  "options": ["option1", "option2", "option3", "option4"],
+  "correctAnswer": "the correct option text",
+  "explanation": "brief explanation (optional)"
+}
+
+Requirements:
+- Generate a NEW question that is DIFFERENT from any existing questions listed above
+- Make it relevant to the content
+- Provide 4 distinct options
+- One option must be clearly correct
+- Include the correct answer
+- The correctAnswer must match one of the options exactly`;
+
+  try {
+    const completion = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a quiz generator that creates unique, relevant questions in JSON format.',
+        },
+        {
+          role: 'user',
+          content: prompt,
+        },
+      ],
+      temperature: 1.0, // Higher temperature for more variety
+      max_tokens: 500,
+    });
+
+    const content = completion.choices[0]?.message?.content;
+
+    if (!content) {
+      throw new Error('No response from OpenAI');
+    }
+
+    // Extract JSON from response
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('No valid JSON in response');
+    }
+
+    const question = JSON.parse(jsonMatch[0]);
+
+    // Validate the question structure
+    if (
+      !question.question ||
+      !Array.isArray(question.options) ||
+      question.options.length !== 4 ||
+      !question.correctAnswer
+    ) {
+      throw new Error('Invalid question format');
+    }
+
+    logger.info('Single question generated successfully');
+
+    return question as QuizQuestion;
+  } catch (error) {
+    logger.error('Failed to generate single question', error);
+    throw new AppError(500, 'Failed to generate question');
+  }
+};
+
+/**
  * Test OpenAI connection
  */
 export const testConnection = async (): Promise<boolean> => {

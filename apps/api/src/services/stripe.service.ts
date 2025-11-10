@@ -22,7 +22,7 @@ import { logger } from '@/config/logger.js';
 import { SubscriptionPlan } from '@prisma/client';
 
 const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-11-20.acacia',
+  apiVersion: '2023-10-16',
 });
 
 /**
@@ -312,4 +312,50 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     logger.error('Failed to handle payment failed', error);
   }
 }
+
+/**
+ * Cancel user subscription
+ */
+export const cancelSubscription = async (userId: string) => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user?.stripeSubscriptionId) {
+    throw new AppError(400, 'No active subscription found');
+  }
+
+  try {
+    // Cancel subscription at period end (user keeps access until billing cycle ends)
+    const subscription = await stripe.subscriptions.update(
+      user.stripeSubscriptionId,
+      {
+        cancel_at_period_end: true,
+      }
+    );
+
+    // Update user status
+    await prisma.user.update({
+      where: { id: userId },
+      data: {
+        subscriptionStatus: 'canceling',
+      },
+    });
+
+    logger.info('Subscription canceled', {
+      userId,
+      subscriptionId: subscription.id,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+    });
+
+    return {
+      status: subscription.status,
+      cancelAtPeriodEnd: subscription.cancel_at_period_end,
+      currentPeriodEnd: subscription.current_period_end,
+    };
+  } catch (error) {
+    logger.error('Failed to cancel subscription', error);
+    throw new AppError(500, 'Failed to cancel subscription');
+  }
+};
 

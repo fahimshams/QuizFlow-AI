@@ -22,13 +22,14 @@ interface GenerateQuizOptions {
   fileId: string;
   questionCount?: number;
   title?: string;
+  filename?: string;
 }
 
 /**
  * Generate complete quiz from file
  */
 export const generateQuiz = async (options: GenerateQuizOptions) => {
-  const { userId, fileId, questionCount, title } = options;
+  const { userId, fileId, questionCount, title, filename } = options;
 
   // Get user
   const user = await prisma.user.findUnique({
@@ -65,11 +66,16 @@ export const generateQuiz = async (options: GenerateQuizOptions) => {
     title || fileUpload.originalName
   );
 
+  // Generate safe filename
+  const quizTitle = title || fileUpload.originalName;
+  const safeFilename = filename || quizTitle.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+
   // Generate QTI package
   const qtiFilePath = await qtiService.generateQTIPackage({
-    title: title || fileUpload.originalName,
+    title: quizTitle,
     questions,
     hasWatermark: planLimits.hasWatermark,
+    filename: safeFilename,
   });
 
   // Generate download URL
@@ -171,5 +177,104 @@ export const deleteQuiz = async (quizId: string, userId: string) => {
   await prisma.quiz.delete({
     where: { id: quizId },
   });
+};
+
+/**
+ * Update quiz questions and regenerate QTI
+ */
+export const updateQuizQuestions = async (
+  quizId: string,
+  userId: string,
+  questions: any[],
+  filename?: string
+) => {
+  const quiz = await getQuizById(quizId, userId);
+
+  // Get user for watermark info
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new AppError(404, 'User not found');
+  }
+
+  const planLimits = PLAN_LIMITS_BY_NAME[user.plan as 'FREE' | 'PRO'];
+
+  // Delete old QTI file
+  try {
+    if (quiz.qtiFilePath) {
+      const fs = await import('fs/promises');
+      await fs.unlink(quiz.qtiFilePath);
+    }
+  } catch (error) {
+    logger.error('Error deleting old QTI file', error);
+  }
+
+  // Generate new QTI package with updated questions
+  const qtiFilePath = await qtiService.generateQTIPackage({
+    title: quiz.title,
+    questions,
+    hasWatermark: planLimits.hasWatermark,
+    filename: filename || quiz.title.replace(/[^a-z0-9]/gi, '_').toLowerCase(),
+  });
+
+  const qtiFileUrl = `${env.API_URL}/${qtiFilePath}`;
+
+  // Update quiz in database
+  const updatedQuiz = await prisma.quiz.update({
+    where: { id: quizId },
+    data: {
+      questions: questions as any,
+      questionCount: questions.length,
+      qtiFilePath,
+      qtiFileUrl,
+    },
+  });
+
+  logger.info('Quiz updated successfully', {
+    quizId,
+    questionsUpdated: questions.length,
+  });
+
+  return {
+    quiz: updatedQuiz,
+    downloadUrl: qtiFileUrl,
+  };
+};
+
+/**
+ * Generate a single question (for replacement)
+ */
+export const generateSingleQuestion = async (
+  fileUploadId: string,
+  userId: string,
+  existingQuestions: string[]
+) => {
+  // Get file upload
+  const fileUpload = await fileService.getFileUploadById(fileUploadId, userId);
+
+  if (!fileUpload.extractedText) {
+    throw new AppError(400, 'File has no extracted text');
+  }
+
+  logger.info('Generating single question', {
+    userId,
+    fileUploadId,
+    existingQuestionsCount: existingQuestions.length,
+  });
+
+  // Generate one new question that's different from existing ones
+  const question = await openaiService.generateSingleQuestion(
+    fileUpload.extractedText,
+    existingQuestions
+  );
+
+  logger.info('Single question generated', {
+    userId,
+    fileUploadId,
+  });
+
+  return question;
 };
 

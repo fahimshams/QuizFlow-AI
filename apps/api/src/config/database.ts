@@ -66,7 +66,8 @@ export const disconnectDatabase = async () => {
  */
 export const checkDatabaseHealth = async (): Promise<boolean> => {
   try {
-    await prisma.$queryRaw`SELECT 1`;
+    // Simple connection check without raw queries
+    await prisma.$connect();
     return true;
   } catch (error) {
     logger.error('Database health check failed:', error);

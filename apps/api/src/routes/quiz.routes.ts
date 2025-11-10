@@ -46,5 +46,16 @@ router.delete(
   quizController.deleteQuiz
 );
 
+router.patch(
+  '/:id',
+  validate({ params: commonSchemas.id }),
+  quizController.updateQuiz
+);
+
+router.post(
+  '/generate-question',
+  quizController.generateSingleQuestion
+);
+
 export default router;
 

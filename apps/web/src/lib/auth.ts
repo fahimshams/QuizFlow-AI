@@ -91,6 +91,48 @@ export const getCurrentUser = async (): Promise<User | null> => {
  * Check if user is authenticated
  */
 export const isAuthenticated = (): boolean => {
-  return !!localStorage.getItem('accessToken');
+  const token = localStorage.getItem('accessToken');
+  if (!token) return false;
+
+  try {
+    // Decode JWT to check expiration
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    const expirationTime = payload.exp * 1000; // Convert to milliseconds
+    const isExpired = Date.now() >= expirationTime;
+
+    if (isExpired) {
+      // Token is expired, clear it and trigger logout
+      logoutImmediately();
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    // Invalid token format, clear it and trigger logout
+    logoutImmediately();
+    return false;
+  }
+};
+
+/**
+ * Immediately logout user without API call
+ * Used for token expiration and invalid tokens
+ */
+export const logoutImmediately = (): void => {
+  // Clear tokens
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
+
+  // Dispatch custom event to notify components
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event('auth-logout'));
+
+    // Redirect to login if not already there
+    if (!window.location.pathname.includes('/login') &&
+        !window.location.pathname.includes('/register') &&
+        window.location.pathname !== '/') {
+      window.location.href = '/login';
+    }
+  }
 };
 

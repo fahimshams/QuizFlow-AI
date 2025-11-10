@@ -77,3 +77,107 @@ export const handleWebhook = asyncHandler(
   }
 );
 
+/**
+ * POST /api/subscription/upgrade-test
+ * Test endpoint to upgrade user to Pro (for development/testing only)
+ * TODO: Remove this endpoint before production deployment
+ */
+export const upgradeToProTest = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError(401, 'User not authenticated');
+    }
+
+    const { prisma } = await import('@/config/database.js');
+
+    // Check if user is already Pro
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+    });
+
+    if (!user) {
+      throw new AppError(404, 'User not found');
+    }
+
+    if (user.plan === 'PRO') {
+      throw new AppError(400, 'User is already on Pro plan');
+    }
+
+    // Upgrade user to Pro
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        plan: 'PRO',
+        subscriptionStatus: 'active',
+      },
+    });
+
+    logger.info('User upgraded to Pro (TEST)', { userId: req.user.id });
+
+    res.status(200).json({
+      success: true,
+      message: 'Successfully upgraded to Pro! 🎉',
+      data: {
+        plan: 'PRO',
+      },
+    });
+  }
+);
+
+/**
+ * POST /api/subscription/downgrade-test
+ * Test endpoint to downgrade user to Free (for development/testing only)
+ * TODO: Remove this endpoint before production deployment
+ */
+export const downgradeToFreeTest = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError(401, 'User not authenticated');
+    }
+
+    const { prisma } = await import('@/config/database.js');
+
+    // Downgrade user to Free
+    await prisma.user.update({
+      where: { id: req.user.id },
+      data: {
+        plan: 'FREE',
+        subscriptionStatus: null,
+        stripeSubscriptionId: null,
+      },
+    });
+
+    logger.info('User downgraded to Free (TEST)', { userId: req.user.id });
+
+    res.status(200).json({
+      success: true,
+      message: 'Downgraded to Free plan',
+      data: {
+        plan: 'FREE',
+      },
+    });
+  }
+);
+
+/**
+ * POST /api/subscription/cancel
+ * Cancel active subscription (keeps access until period end)
+ */
+export const cancelSubscription = asyncHandler(
+  async (req: Request, res: Response) => {
+    if (!req.user) {
+      throw new AppError(401, 'User not authenticated');
+    }
+
+    logger.info('Canceling subscription', { userId: req.user.id });
+
+    const result = await stripeService.cancelSubscription(req.user.id);
+
+    res.status(200).json({
+      success: true,
+      message: 'Subscription canceled successfully. You will have access until the end of your billing period.',
+      data: result,
+    });
+  }
+);
+

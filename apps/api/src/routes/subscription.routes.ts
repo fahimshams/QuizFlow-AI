@@ -2,14 +2,14 @@
  * Subscription Routes
  */
 
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import express from 'express';
 import * as subscriptionController from '@/controllers/subscription.controller.js';
 import { authenticate } from '@/middleware/auth.js';
 import { validate } from '@/middleware/validation.js';
 import { z } from 'zod';
 
-const router = Router();
+const router: ExpressRouter = Router();
 
 // Validation schemas
 const checkoutSchema = {
@@ -45,6 +45,26 @@ router.post(
   authenticate,
   validate(portalSchema),
   subscriptionController.createPortal
+);
+
+router.post(
+  '/cancel',
+  authenticate,
+  subscriptionController.cancelSubscription
+);
+
+// TEST ONLY - Upgrade/Downgrade without payment (for development/testing)
+// TODO: Remove before production deployment
+router.post(
+  '/upgrade-test',
+  authenticate,
+  subscriptionController.upgradeToProTest
+);
+
+router.post(
+  '/downgrade-test',
+  authenticate,
+  subscriptionController.downgradeToFreeTest
 );
 
 export default router;

@@ -23,8 +23,8 @@ model User {
 
   // Subscription
   plan                  SubscriptionPlan @default(FREE)
-  stripeCustomerId      String?          @unique
-  stripeSubscriptionId  String?          @unique
+  stripeCustomerId      String?
+  stripeSubscriptionId  String?
   subscriptionStatus    String?          // active, canceled, past_due
 
   // Relationships
