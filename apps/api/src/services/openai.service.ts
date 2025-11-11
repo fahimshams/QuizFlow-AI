@@ -23,6 +23,15 @@ export const generateQuizQuestions = async (
   questionCount: number,
   title: string
 ): Promise<QuizQuestion[]> => {
+  // Validate question count limits
+  if (questionCount < 1) {
+    throw new AppError(400, 'Question count must be at least 1');
+  }
+
+  if (questionCount > 30) {
+    throw new AppError(400, 'Question count cannot exceed 30 for optimal quality and performance');
+  }
+
   try {
     logger.info('Generating quiz questions with OpenAI', {
       textLength: extractedText.length,
@@ -31,20 +40,22 @@ export const generateQuizQuestions = async (
     });
 
     // Prepare the prompt for OpenAI
+    // Increased from 4000 to 16000 chars to provide more content for generating more questions
     const prompt = `You are an expert quiz creator. Generate ${questionCount} multiple-choice questions based on the following content.
 
 Title: ${title}
 
 Content:
-${extractedText.substring(0, 4000)} ${extractedText.length > 4000 ? '...(content truncated)' : ''}
+${extractedText.substring(0, 16000)} ${extractedText.length > 16000 ? '...(content truncated)' : ''}
 
-Requirements:
-1. Generate exactly ${questionCount} multiple-choice questions
-2. Each question should have 4 options (A, B, C, D)
+CRITICAL REQUIREMENTS:
+1. You MUST generate EXACTLY ${questionCount} questions - no more, no less
+2. Each question MUST have exactly 4 options (A, B, C, D)
 3. Include the correct answer
 4. Add a brief explanation for the correct answer
 5. Questions should test comprehension and key concepts
 6. Ensure variety in question difficulty and topics covered
+7. DO NOT stop generating until you have created all ${questionCount} questions
 
 Return your response as a JSON object in this exact format:
 {
@@ -56,7 +67,9 @@ Return your response as a JSON object in this exact format:
       "explanation": "Brief explanation of why this is correct"
     }
   ]
-}`;
+}
+
+Remember: Generate EXACTLY ${questionCount} questions!`;
 
     // Call OpenAI API
     const completion = await openai.chat.completions.create({
@@ -65,15 +78,15 @@ Return your response as a JSON object in this exact format:
         {
           role: 'system',
           content:
-            'You are an expert educator who creates high-quality quiz questions. Always respond with valid JSON only.',
+            'You are an expert educator who creates high-quality quiz questions. Always respond with valid JSON only. You MUST generate the exact number of questions requested - never generate fewer.',
         },
         {
           role: 'user',
           content: prompt,
         },
       ],
-      temperature: 0.7,
-      max_tokens: 3000,
+      temperature: 0.8, // Slightly higher for more diverse questions
+      max_tokens: 6000, // Increased to support up to 30+ questions with explanations
       response_format: { type: 'json_object' },
     });
 
@@ -116,12 +129,59 @@ Return your response as a JSON object in this exact format:
       }
     );
 
+    // If we didn't get enough questions, generate more to fill the gap
+    let finalQuestions = validatedQuestions;
+
+    if (validatedQuestions.length < questionCount) {
+      const shortfall = questionCount - validatedQuestions.length;
+
+      logger.warn('AI generated fewer questions than requested, generating additional questions', {
+        requested: questionCount,
+        generated: validatedQuestions.length,
+        shortfall,
+        tokensUsed: completion.usage?.total_tokens,
+      });
+
+      // Generate additional questions to fill the gap
+      const existingQuestions = validatedQuestions.map(q => q.question);
+      const additionalQuestions: QuizQuestion[] = [];
+
+      for (let i = 0; i < shortfall; i++) {
+        try {
+          const newQuestion = await generateSingleQuestion(
+            extractedText.substring(0, 16000),
+            [...existingQuestions, ...additionalQuestions.map(q => q.question)]
+          );
+          additionalQuestions.push(newQuestion);
+          logger.info(`Generated additional question ${i + 1}/${shortfall}`);
+        } catch (error) {
+          logger.error(`Failed to generate additional question ${i + 1}`, error);
+          // Continue trying to generate remaining questions
+        }
+      }
+
+      finalQuestions = [...validatedQuestions, ...additionalQuestions];
+
+      // Final check - if we still don't have enough after retries
+      if (finalQuestions.length < questionCount) {
+        throw new AppError(
+          500,
+          `Could only generate ${finalQuestions.length} out of ${questionCount} questions. Document may be too short or lacks sufficient content.`
+        );
+      }
+    }
+
+    // Ensure we don't exceed the requested count (trim if needed)
+    if (finalQuestions.length > questionCount) {
+      finalQuestions = finalQuestions.slice(0, questionCount);
+    }
+
     logger.info('Quiz questions generated successfully', {
-      questionsGenerated: validatedQuestions.length,
+      questionsGenerated: finalQuestions.length,
       tokensUsed: completion.usage?.total_tokens,
     });
 
-    return validatedQuestions;
+    return finalQuestions;
   } catch (error) {
     logger.error('Error generating quiz questions', error);
 
@@ -167,7 +227,7 @@ export const generateSingleQuestion = async (
 ${existingQuestionsText}
 
 Content:
-${text.substring(0, 3000)}
+${text.substring(0, 8000)}
 
 Generate exactly ONE question in this JSON format:
 {
@@ -199,7 +259,8 @@ Requirements:
         },
       ],
       temperature: 1.0, // Higher temperature for more variety
-      max_tokens: 500,
+      max_tokens: 800, // Increased for complete question generation
+      response_format: { type: 'json_object' },
     });
 
     const content = completion.choices[0]?.message?.content;
@@ -208,13 +269,8 @@ Requirements:
       throw new Error('No response from OpenAI');
     }
 
-    // Extract JSON from response
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('No valid JSON in response');
-    }
-
-    const question = JSON.parse(jsonMatch[0]);
+    // Parse JSON response (response_format: json_object ensures valid JSON)
+    const question = JSON.parse(content);
 
     // Validate the question structure
     if (
