@@ -18,6 +18,7 @@ export function Navbar() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [isClient, setIsClient] = useState(false);
   const [userPlan, setUserPlan] = useState<string>('FREE');
+  const [userRole, setUserRole] = useState<string>('USER');
 
   // Monitor token expiration
   useTokenExpiration();
@@ -34,6 +35,7 @@ export function Navbar() {
           const user = await import('@/lib/auth').then(m => m.getCurrentUser());
           if (user) {
             setUserPlan(user.plan || 'FREE');
+            setUserRole(user.role || 'USER');
           }
         } catch (error) {
           console.error('Error fetching user plan:', error);
@@ -171,6 +173,15 @@ export function Navbar() {
                     >
                       Dashboard
                     </Link>
+                    {userRole === 'ADMIN' && (
+                      <Link
+                        href="/admin"
+                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={() => setShowUserMenu(false)}
+                      >
+                        📊 Admin Dashboard
+                      </Link>
+                    )}
                     <Link
                       href="/subscription"
                       className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"

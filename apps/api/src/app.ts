@@ -21,6 +21,7 @@ import authRoutes from '@/routes/auth.routes.js';
 import fileRoutes from '@/routes/file.routes.js';
 import quizRoutes from '@/routes/quiz.routes.js';
 import subscriptionRoutes from '@/routes/subscription.routes.js';
+import adminRoutes from '@/routes/admin.routes.js';
 
 /**
  * Create and configure Express app
@@ -140,6 +141,7 @@ export const createApp = (): Application => {
   app.use('/api/upload', fileRoutes);
   app.use('/api/quiz', quizRoutes);
   app.use('/api/subscription', subscriptionRoutes);
+  app.use('/api/admin', adminRoutes);
 
   // ============================================
   // STATIC FILE SERVING

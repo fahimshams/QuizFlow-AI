@@ -19,17 +19,19 @@ import { Input } from '@/components/ui/Input';
 import { Dialog } from '@/components/ui/Dialog';
 import { Toast } from '@/components/ui/Toast';
 import api from '@/lib/axios';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTokenExpiration } from '@/hooks/useTokenExpiration';
 
 export default function DashboardPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [questionCount, setQuestionCount] = useState('5');
   const [title, setTitle] = useState('');
   const [filename, setFilename] = useState('');
   const [currentPlan, setCurrentPlan] = useState<string>('FREE');
   const [isChangingPlan, setIsChangingPlan] = useState(false);
+  const [deletingQuizId, setDeletingQuizId] = useState<string | null>(null);
 
   // Monitor token expiration
   useTokenExpiration();
@@ -55,6 +57,7 @@ export default function DashboardPage() {
     fileUploadId: string;
     title: string;
     filename: string;
+    originalFilename: string; // Track original filename for comparison
     questionCount: number;
   }>({
     isOpen: false,
@@ -63,6 +66,7 @@ export default function DashboardPage() {
     fileUploadId: '',
     title: '',
     filename: '',
+    originalFilename: '',
     questionCount: 0,
   });
 
@@ -70,6 +74,7 @@ export default function DashboardPage() {
   const [editingQuestion, setEditingQuestion] = useState<number | null>(null);
   const [editedQuestions, setEditedQuestions] = useState<any[]>([]);
   const [isReplacingQuestion, setIsReplacingQuestion] = useState<number | null>(null);
+  const [isLoadingQuiz, setIsLoadingQuiz] = useState(false);
 
   // Listen for auth-logout event from axios interceptor
   useEffect(() => {
@@ -122,23 +127,30 @@ export default function DashboardPage() {
   // Delete quiz mutation
   const deleteQuizMutation = useMutation({
     mutationFn: async (quizId: string) => {
+      // Set deleting state for animation
+      setDeletingQuizId(quizId);
       const response = await api.delete(`/quiz/${quizId}`);
       return response.data;
     },
-    onSuccess: () => {
+    onSuccess: (_, quizId) => {
       setDeleteDialog({ isOpen: false, quizId: '', quizTitle: '' });
+
+      // Wait for fade-out animation to complete, then remove from list
+      setTimeout(() => {
+        // Invalidate and refetch quizzes to update the list
+        queryClient.invalidateQueries({ queryKey: ['quizzes'] });
+        setDeletingQuizId(null);
+      }, 300); // Match the CSS transition duration
+
       setToast({
         isOpen: true,
         message: 'Quiz deleted successfully!',
         type: 'success',
       });
-      // Refresh the page after a short delay to show the toast
-      setTimeout(() => {
-        window.location.reload();
-      }, 1000);
     },
     onError: () => {
       setDeleteDialog({ isOpen: false, quizId: '', quizTitle: '' });
+      setDeletingQuizId(null); // Reset deleting state on error
       setToast({
         isOpen: true,
         message: 'Failed to delete quiz. Please try again.',
@@ -196,6 +208,87 @@ export default function DashboardPage() {
     });
   };
 
+  // Open existing quiz in preview dialog
+  const openQuizPreview = async (quizId: string) => {
+    setIsLoadingQuiz(true);
+    try {
+      // Fetch full quiz details
+      const response = await api.get(`/quiz/${quizId}`);
+      const quiz = response.data;
+
+      if (!quiz) {
+        setToast({
+          isOpen: true,
+          message: 'Failed to load quiz details',
+          type: 'error',
+        });
+        return;
+      }
+
+      // Ensure questions is an array
+      let questions = [];
+      if (quiz.questions) {
+        if (Array.isArray(quiz.questions)) {
+          questions = quiz.questions;
+        } else if (typeof quiz.questions === 'string') {
+          // Handle case where questions might be a JSON string
+          questions = JSON.parse(quiz.questions);
+        } else {
+          questions = [];
+        }
+      }
+
+      if (questions.length === 0) {
+        setToast({
+          isOpen: true,
+          message: 'This quiz has no questions',
+          type: 'error',
+        });
+        return;
+      }
+
+      // Extract filename from qtiFilePath or generate from title
+      let extractedFilename = '';
+      if (quiz.qtiFilePath) {
+        // Extract filename from path like "uploads/qti/my_quiz.zip"
+        const pathParts = quiz.qtiFilePath.split('/');
+        const zipFilename = pathParts[pathParts.length - 1];
+        extractedFilename = zipFilename.replace('.zip', '');
+      } else {
+        // Fallback to generating from title
+        extractedFilename = quiz.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
+      }
+
+      // Verify fileUploadId exists (needed for regenerate)
+      if (!quiz.fileUploadId) {
+        console.warn('Quiz missing fileUploadId, regenerate may not work');
+      }
+
+      // Open preview dialog with quiz data
+      setPreviewDialog({
+        isOpen: true,
+        questions: questions,
+        quizId: quiz.id,
+        fileUploadId: quiz.fileUploadId || '',
+        title: quiz.title,
+        filename: extractedFilename,
+        originalFilename: extractedFilename,
+        questionCount: quiz.questionCount || questions.length,
+      });
+      setEditedQuestions(JSON.parse(JSON.stringify(questions))); // Deep copy
+      setEditingQuestion(null);
+      setIsReplacingQuestion(null);
+    } catch (error: any) {
+      setToast({
+        isOpen: true,
+        message: error.message || 'Failed to load quiz. Please try again.',
+        type: 'error',
+      });
+    } finally {
+      setIsLoadingQuiz(false);
+    }
+  };
+
   // Confirm deletion
   const confirmDeleteQuiz = async () => {
     await deleteQuizMutation.mutateAsync(deleteDialog.quizId);
@@ -224,6 +317,7 @@ export default function DashboardPage() {
         fileUploadId: data.quiz?.fileUploadId || '',
         title: data.quiz?.title || title,
         filename: defaultFilename,
+        originalFilename: defaultFilename, // Store original filename
         questionCount: parseInt(questionCount),
       });
       setEditedQuestions(JSON.parse(JSON.stringify(questions))); // Deep copy
@@ -259,12 +353,14 @@ export default function DashboardPage() {
     }
 
     try {
-      // If questions were edited, update the quiz
+      // Check if questions or filename were changed
       const originalQuestionsStr = JSON.stringify(previewDialog.questions);
       const editedQuestionsStr = JSON.stringify(editedQuestions);
+      const questionsChanged = originalQuestionsStr !== editedQuestionsStr;
+      const filenameChanged = previewDialog.filename !== previewDialog.originalFilename;
 
-      if (originalQuestionsStr !== editedQuestionsStr) {
-        // Update quiz with edited questions
+      // Update quiz if questions or filename changed
+      if (questionsChanged || filenameChanged) {
         await api.patch(`/quiz/${previewDialog.quizId}`, {
           questions: editedQuestions,
           filename: previewDialog.filename,
@@ -278,6 +374,7 @@ export default function DashboardPage() {
         fileUploadId: '',
         title: '',
         filename: '',
+        originalFilename: '',
         questionCount: 0,
       });
       setEditedQuestions([]);
@@ -306,11 +403,12 @@ export default function DashboardPage() {
       // Delete the current quiz first
       await api.delete(`/quiz/${previewDialog.quizId}`);
 
-      // Generate new quiz with the same file
+      // Generate new quiz with the same file, preserving the current filename
       await generateQuizMutation.mutateAsync({
         fileId: previewDialog.fileUploadId,
         questionCount: previewDialog.questionCount,
         title: previewDialog.title,
+        filename: previewDialog.filename, // Preserve the current filename
       });
     } catch (error: any) {
       setToast({
@@ -663,28 +761,44 @@ export default function DashboardPage() {
                     {quizzes.map((quiz: any) => (
                       <div
                         key={quiz.id}
-                        className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                        className={`border rounded-lg p-4 hover:shadow-md hover:border-primary-300 transition-all duration-300 bg-white ${
+                          isLoadingQuiz ? 'cursor-wait opacity-50' : 'cursor-pointer'
+                        } ${
+                          deletingQuizId === quiz.id
+                            ? 'opacity-0 scale-95 -translate-y-2 pointer-events-none'
+                            : 'opacity-100 scale-100 translate-y-0'
+                        }`}
+                        onClick={() => !isLoadingQuiz && !deletingQuizId && openQuizPreview(quiz.id)}
                       >
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
-                            <h3 className="font-semibold text-lg">
-                              {quiz.title}
-                            </h3>
-                            <p className="text-sm text-gray-600">
+                            <div className="flex items-center gap-2">
+                              <h3 className="font-semibold text-lg text-primary-600 hover:text-primary-700">
+                                {quiz.title}
+                              </h3>
+                              <span className="text-xs text-primary-500 bg-primary-50 px-2 py-1 rounded">
+                                {isLoadingQuiz ? 'Loading...' : 'Click to edit'}
+                              </span>
+                            </div>
+                            <p className="text-sm text-gray-600 mt-1">
                               {quiz.questionCount} questions •{' '}
                               {new Date(quiz.createdAt).toLocaleDateString()}
                             </p>
                           </div>
-                          <div className="flex gap-2">
+                          <div className="flex gap-2" onClick={(e) => e.stopPropagation()}>
                             <a
                               href={quiz.qtiFileUrl}
                               download
                               className="btn btn-primary btn-sm"
+                              onClick={(e) => e.stopPropagation()}
                             >
                               Download
                             </a>
                             <button
-                              onClick={() => openDeleteDialog(quiz.id, quiz.title)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openDeleteDialog(quiz.id, quiz.title);
+                              }}
                               disabled={deleteQuizMutation.isPending}
                               className="btn btn-sm bg-red-600 text-white hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed px-4 py-2 rounded-md font-medium transition-colors"
                               title="Delete quiz"
@@ -774,7 +888,11 @@ export default function DashboardPage() {
                 </div>
                 <button
                   onClick={() => {
-                    setPreviewDialog({ ...previewDialog, isOpen: false });
+                    setPreviewDialog({
+                      ...previewDialog,
+                      isOpen: false,
+                      originalFilename: ''
+                    });
                     setEditingQuestion(null);
                   }}
                   className="text-gray-400 hover:text-gray-600 flex-shrink-0"
