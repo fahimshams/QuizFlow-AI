@@ -23,7 +23,10 @@ export const uploadFile = asyncHandler(async (req: Request, res: Response) => {
   // Check upload limit
   const canUpload = await fileService.checkUploadLimit(req.user.id);
   if (!canUpload) {
-    throw new AppError(429, 'Upload limit exceeded. Upgrade to Pro for unlimited uploads.');
+    throw new AppError(
+      429,
+      'Upload limit reached for your current plan (rolling 7 days, by completed documents). Open the dashboard to see recent uploads, or upgrade for a higher allowance.'
+    );
   }
 
   logger.info('File upload started', {
@@ -34,8 +37,8 @@ export const uploadFile = asyncHandler(async (req: Request, res: Response) => {
   // Process file
   const result = await fileService.processFileUpload(req.user.id, req.file);
 
-  // Record usage
-  await fileService.recordUsage(req.user.id, 'UPLOAD');
+  // Record usage (fileId for abuse tracking / support)
+  await fileService.recordUsage(req.user.id, 'UPLOAD', { fileId: result.id });
 
   logger.info('File processed successfully', {
     userId: req.user.id,

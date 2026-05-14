@@ -174,3 +174,69 @@ export const getUserById = async (userId: string): Promise<Omit<User, 'password'
   return userWithoutPassword;
 };
 
+/**
+ * Update profile (name and/or email)
+ */
+export const updateUserProfile = async (
+  userId: string,
+  updates: { name?: string; email?: string }
+): Promise<Omit<User, 'password'>> => {
+  if (updates.email) {
+    const taken = await prisma.user.findFirst({
+      where: {
+        email: updates.email,
+        NOT: { id: userId },
+      },
+    });
+    if (taken) {
+      throw new AppError(409, 'Email already in use');
+    }
+  }
+
+  const data: { name?: string; email?: string } = {};
+  if (updates.name !== undefined) data.name = updates.name;
+  if (updates.email !== undefined) data.email = updates.email;
+
+  if (Object.keys(data).length === 0) {
+    return getUserById(userId);
+  }
+
+  const user = await prisma.user.update({
+    where: { id: userId },
+    data,
+  });
+
+  const { password: _, ...rest } = user;
+  return rest;
+};
+
+/**
+ * Change password (invalidates refresh tokens for this user)
+ */
+export const changeUserPassword = async (
+  userId: string,
+  currentPassword: string,
+  newPassword: string
+): Promise<void> => {
+  const user = await prisma.user.findUnique({ where: { id: userId } });
+
+  if (!user) {
+    throw new AppError(404, 'User not found');
+  }
+
+  const valid = await bcrypt.compare(currentPassword, user.password);
+  if (!valid) {
+    throw new AppError(401, 'Current password is incorrect');
+  }
+
+  const hashed = await bcrypt.hash(newPassword, 10);
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: userId },
+      data: { password: hashed },
+    }),
+    prisma.refreshToken.deleteMany({ where: { userId } }),
+  ]);
+};
+

@@ -9,10 +9,10 @@
  */
 
 import express, { Application } from 'express';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
-import mongoSanitize from 'express-mongo-sanitize';
 import { env } from '@/config/env.js';
 import { logger } from '@/config/logger.js';
 import { errorHandler } from '@/middleware/errorHandler.js';
@@ -51,12 +51,6 @@ export const createApp = (): Application => {
     })
   );
 
-  /**
-   * MongoDB Injection Prevention
-   * Sanitizes user input to prevent NoSQL injection
-   */
-  app.use(mongoSanitize());
-
   // ============================================
   // PARSING MIDDLEWARE
   // ============================================
@@ -77,6 +71,12 @@ export const createApp = (): Application => {
    * Reduces bandwidth usage
    */
   app.use(compression());
+
+  // Serve generated QTI zips and uploaded files (paths like uploads/qti/...)
+  const uploadsRoot = path.isAbsolute(env.UPLOAD_DIR)
+    ? env.UPLOAD_DIR
+    : path.resolve(process.cwd(), env.UPLOAD_DIR.replace(/^\.\//, ''));
+  app.use('/uploads', express.static(uploadsRoot));
 
   // ============================================
   // RATE LIMITING

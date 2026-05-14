@@ -1,0 +1,12 @@
+---
+description: Shared @quizflow/types package
+globs: packages/types/**/*.ts
+alwaysApply: false
+---
+
+# Shared types package
+
+- **Purpose**: Cross-cutting TypeScript types for API and web. No runtime logic except constants like `PLAN_LIMITS`.
+- **Naming**: Use PascalCase for interfaces/enums. Enum string values are lowercase where they mirror API/JSON (e.g. `UserRole.USER = 'user'`).
+- **Changes**: Updating a shared type may require coordinated changes in `apps/api` and `apps/web`. Prefer additive changes for public fields when possible.
+- **Prisma**: Database enums live in `schema.prisma`; keep semantic parity with `SubscriptionPlan`, `UserRole`, and file enums in this package to avoid drift.

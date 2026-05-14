@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "mongodb"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
@@ -15,7 +15,7 @@ datasource db {
 // ============================================
 
 model User {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  id        String   @id @default(cuid())
   email     String   @unique
   password  String   // Hashed with bcrypt
   name      String
@@ -53,8 +53,8 @@ enum SubscriptionPlan {
 // ============================================
 
 model FileUpload {
-  id            String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId        String   @db.ObjectId
+  id            String   @id @default(cuid())
+  userId        String
   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   fileName      String
@@ -94,11 +94,11 @@ enum UploadStatus {
 // ============================================
 
 model Quiz {
-  id             String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId         String   @db.ObjectId
+  id             String   @id @default(cuid())
+  userId         String
   user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  fileUploadId   String   @unique @db.ObjectId
+  fileUploadId   String   @unique
   fileUpload     FileUpload @relation(fields: [fileUploadId], references: [id], onDelete: Cascade)
 
   title          String
@@ -123,8 +123,8 @@ model Quiz {
 // ============================================
 
 model UsageRecord {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String   @db.ObjectId
+  id        String   @id @default(cuid())
+  userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   action    UsageAction
@@ -148,8 +148,8 @@ enum UsageAction {
 // ============================================
 
 model RefreshToken {
-  id        String   @id @default(auto()) @map("_id") @db.ObjectId
-  userId    String   @db.ObjectId
+  id        String   @id @default(cuid())
+  userId    String
   token     String   @unique
   expiresAt DateTime
 

@@ -38,6 +38,24 @@ const refreshSchema = {
   }),
 };
 
+const updateProfileSchema = {
+  body: z
+    .object({
+      name: z.string().min(2, 'Name must be at least 2 characters').optional(),
+      email: commonSchemas.email.optional(),
+    })
+    .refine((d) => d.name !== undefined || d.email !== undefined, {
+      message: 'Provide at least one of: name, email',
+    }),
+};
+
+const changePasswordSchema = {
+  body: z.object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: commonSchemas.password,
+  }),
+};
+
 // Routes
 router.post(
   '/register',
@@ -70,6 +88,20 @@ router.get(
   '/me',
   authenticate,
   authController.getProfile
+);
+
+router.patch(
+  '/profile',
+  authenticate,
+  validate(updateProfileSchema),
+  authController.updateProfile
+);
+
+router.post(
+  '/password',
+  authenticate,
+  validate(changePasswordSchema),
+  authController.changePassword
 );
 
 export default router;

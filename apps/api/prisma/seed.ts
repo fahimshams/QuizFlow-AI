@@ -9,10 +9,14 @@
  * Run with: pnpm --filter @quizflow/api prisma:seed
  */
 
-import { PrismaClient, UserRole, SubscriptionPlan } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
+
+/** Prisma enum values (avoid named enum imports — they break under ESM + tsx in some setups). */
+const Role = { USER: 'USER', ADMIN: 'ADMIN' } as const;
+const Plan = { FREE: 'FREE', PRO: 'PRO' } as const;
 
 async function main() {
   console.log('🌱 Seeding database...');
@@ -31,8 +35,8 @@ async function main() {
       email: 'admin@quizflow.ai',
       password: adminPassword,
       name: 'Admin User',
-      role: UserRole.ADMIN,
-      plan: SubscriptionPlan.PRO,
+      role: Role.ADMIN,
+      plan: Plan.PRO,
     },
   });
   console.log('✅ Created admin user:', admin.email);
@@ -44,8 +48,8 @@ async function main() {
       email: 'free@example.com',
       password: freePassword,
       name: 'Free User',
-      role: UserRole.USER,
-      plan: SubscriptionPlan.FREE,
+      role: Role.USER,
+      plan: Plan.FREE,
     },
   });
   console.log('✅ Created free user:', freeUser.email);
@@ -57,8 +61,8 @@ async function main() {
       email: 'pro@example.com',
       password: proPassword,
       name: 'Pro User',
-      role: UserRole.USER,
-      plan: SubscriptionPlan.PRO,
+      role: Role.USER,
+      plan: Plan.PRO,
       stripeCustomerId: 'cus_test_123',
       stripeSubscriptionId: 'sub_test_123',
       subscriptionStatus: 'active',

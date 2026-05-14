@@ -4,7 +4,7 @@
  * ARCHITECTURE:
  * - Wraps entire app with necessary providers
  * - React Query for server state management
- * - Auth context for user state
+ * - Auth context for session + navbar (client-only)
  * - Client-side only (use client directive)
  */
 
@@ -12,6 +12,7 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
+import { AuthProvider } from '@/components/auth-context';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   // Create Query Client instance
@@ -33,7 +34,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>{children}</AuthProvider>
+    </QueryClientProvider>
   );
 }
 

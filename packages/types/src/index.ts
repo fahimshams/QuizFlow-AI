@@ -22,6 +22,13 @@ export enum SubscriptionPlan {
   PRO = 'pro',
 }
 
+/** Map Prisma / API plan string to SubscriptionPlan */
+export function subscriptionPlanFromDb(plan: string): SubscriptionPlan {
+  return String(plan).toUpperCase() === 'PRO'
+    ? SubscriptionPlan.PRO
+    : SubscriptionPlan.FREE;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -101,17 +108,23 @@ export interface UsageRecord {
   timestamp: Date;
 }
 
-// Plan limits
+/**
+ * Plan limits (rolling 7-day window for uploads & QUIZ_GENERATION counts).
+ * Pro uses high finite caps to control cost at scale—not “unlimited.”
+ */
 export const PLAN_LIMITS = {
   [SubscriptionPlan.FREE]: {
     uploadsPerWeek: 1,
     questionsPerQuiz: 5,
     hasWatermark: true,
+    /** AI quiz creates + regenerations per rolling 7 days */
+    quizGenerationsPerWeek: 5,
   },
   [SubscriptionPlan.PRO]: {
-    uploadsPerWeek: Infinity,
+    uploadsPerWeek: 20,
     questionsPerQuiz: 30,
     hasWatermark: false,
+    quizGenerationsPerWeek: 60,
   },
 } as const;
 

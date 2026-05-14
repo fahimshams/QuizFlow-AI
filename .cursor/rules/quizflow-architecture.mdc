@@ -1,0 +1,13 @@
+---
+description: QuizFlow AI monorepo layout and boundaries
+alwaysApply: true
+---
+
+# QuizFlow AI architecture
+
+- **Monorepo**: pnpm workspaces. Apps live under `apps/`, shared code under `packages/`.
+- **`apps/web`**: Next.js 14 (App Router) frontend. Talks to the API over HTTP (see `src/lib/axios.ts`). Browser-only config uses `NEXT_PUBLIC_*` vars.
+- **`apps/api`**: Express + TypeScript API. Entry: `src/server.ts`, app factory `src/app.ts`. Env is validated in `src/config/env.ts` (Zod); use `env`, not raw `process.env`, in API code.
+- **`packages/types`**: Shared DTOs, enums, and API shapes. Import as `@quizflow/types` from apps. Keep Prisma enums/schema in sync with shared types when they represent the same domain.
+- **Data**: PostgreSQL via Prisma (`apps/api/prisma/schema.prisma`). Local dev: `pnpm db:up` (Docker Compose) then `pnpm db:migrate` from repo root. Production/Azure: `prisma migrate deploy` with `DATABASE_URL` and `sslmode=require`.
+- **Do not** add new top-level apps or packages without updating `pnpm-workspace.yaml` and root scripts if needed.

@@ -80,9 +80,12 @@ export const logout = async (): Promise<void> => {
  */
 export const getCurrentUser = async (): Promise<User | null> => {
   try {
-    const response = await api.get('/auth/me');
-    return response.data;
-  } catch (error) {
+    const body = (await api.get('/auth/me')) as {
+      success?: boolean;
+      data?: User;
+    };
+    return body.data ?? null;
+  } catch {
     return null;
   }
 };
@@ -92,5 +95,31 @@ export const getCurrentUser = async (): Promise<User | null> => {
  */
 export const isAuthenticated = (): boolean => {
   return !!localStorage.getItem('accessToken');
+};
+
+/**
+ * PATCH /auth/profile — update name and/or email
+ */
+export const updateProfileApi = async (payload: {
+  name?: string;
+  email?: string;
+}): Promise<User> => {
+  const res = (await api.patch('/auth/profile', payload)) as {
+    success: boolean;
+    data: User;
+  };
+  return res.data;
+};
+
+/**
+ * POST /auth/password — clears local tokens (refresh revoked server-side)
+ */
+export const changePasswordApi = async (
+  currentPassword: string,
+  newPassword: string
+): Promise<void> => {
+  await api.post('/auth/password', { currentPassword, newPassword });
+  localStorage.removeItem('accessToken');
+  localStorage.removeItem('refreshToken');
 };
 

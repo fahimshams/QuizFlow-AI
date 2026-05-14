@@ -1,0 +1,13 @@
+---
+description: Express API patterns (routes, services, Prisma)
+globs: apps/api/**/*.ts
+alwaysApply: false
+---
+
+# API conventions
+
+- **Layers**: Routes (`src/routes/*.routes.ts`) → controllers → services → Prisma. Keep HTTP parsing/validation in middleware or controllers; business logic in services.
+- **Imports**: Use path alias `@/` → `src/` (see `tsconfig.json`). Prefer `.js` extensions in import specifiers for ESM output.
+- **Config**: Read configuration only from `src/config/env.ts` (`env` object). Add new variables to the Zod schema there first.
+- **Errors**: Use `errorHandler` middleware patterns; return consistent JSON error shapes compatible with `@quizflow/types` `APIError` where appropriate.
+- **Security**: Keep middleware order consistent with `createApp()` in `app.ts` (helmet, cors, sanitize, parsers, rate limit, routes, 404, error handler).

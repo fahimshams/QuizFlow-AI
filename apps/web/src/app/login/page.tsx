@@ -4,19 +4,36 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { BrandLogo } from '@/components/BrandLogo';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { login } from '@/lib/auth';
+import { useAuth } from '@/components/auth-context';
 
 export default function LoginPage() {
   const router = useRouter();
+  const { setUser, user, loading } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace('/dashboard');
+    }
+  }, [loading, user, router]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center text-gray-600">
+        Loading…
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -24,7 +41,8 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(email, password);
+      const loggedInUser = await login(email, password);
+      setUser(loggedInUser);
       router.push('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Login failed');
@@ -38,9 +56,9 @@ export default function LoginPage() {
       <div className="max-w-md w-full space-y-8">
         {/* Header */}
         <div className="text-center">
-          <Link href="/" className="text-3xl font-bold text-primary-600">
-            ✨ QuizFlow AI
-          </Link>
+          <div className="flex justify-center">
+            <BrandLogo href="/" />
+          </div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900">
             Welcome back
           </h2>

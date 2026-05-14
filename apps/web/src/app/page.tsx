@@ -10,6 +10,16 @@
  */
 
 import Link from 'next/link';
+import {
+  Download,
+  FileText,
+  MonitorPlay,
+  Plug2,
+  Sparkles,
+  Target,
+  WalletCards,
+  Zap,
+} from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent, CardTitle } from '@/components/ui/Card';
@@ -30,9 +40,14 @@ export default function HomePage() {
             Upload your lecture materials and let AI generate Canvas LMS-compatible
             quizzes in seconds. Save hours of manual work.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
             <Link href="/register">
               <Button size="lg">Get Started Free</Button>
+            </Link>
+            <Link href="/login">
+              <Button size="lg" variant="outline">
+                Log in
+              </Button>
             </Link>
             <Link href="/pricing">
               <Button size="lg" variant="outline">
@@ -40,25 +55,45 @@ export default function HomePage() {
               </Button>
             </Link>
           </div>
+          <p className="mt-6 text-sm text-gray-600">
+            New here?{' '}
+            <Link href="/register" className="font-medium text-primary-600 hover:text-primary-700">
+              Create an account
+            </Link>
+            {' · '}
+            <Link href="/login" className="font-medium text-primary-600 hover:text-primary-700">
+              Log in to your dashboard
+            </Link>
+          </p>
         </div>
 
         {/* Demo Video/Screenshot Placeholder */}
-        <div className="mt-16 rounded-xl shadow-2xl overflow-hidden">
-          <div className="bg-gray-200 aspect-video flex items-center justify-center">
-            <p className="text-gray-500 text-lg">📹 Demo Video / Screenshot</p>
+        <div className="mt-16 rounded-2xl shadow-xl overflow-hidden border border-slate-200/80 bg-gradient-to-br from-slate-50 via-white to-primary-50">
+          <div className="aspect-video flex flex-col items-center justify-center gap-4 px-6">
+            <div className="rounded-full bg-primary-100 p-5 ring-8 ring-primary-50/80">
+              <MonitorPlay className="h-14 w-14 text-primary-600" strokeWidth={1.25} />
+            </div>
+            <p className="text-slate-600 text-center text-lg font-medium max-w-md">
+              Product walkthrough
+            </p>
+            <p className="text-slate-500 text-sm text-center max-w-lg">
+              Add a short demo video or screenshot here when you have one.
+            </p>
           </div>
         </div>
       </section>
 
       {/* Features Section */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <h2 className="text-3xl font-bold text-center mb-12">
+        <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
           How It Works
         </h2>
         <div className="grid md:grid-cols-3 gap-8">
-          <Card hover className="text-center">
-            <CardContent>
-              <div className="text-4xl mb-4">📄</div>
+          <Card hover className="text-center border-slate-100 shadow-sm">
+            <CardContent className="pt-8 pb-8">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
+                <FileText className="h-7 w-7" strokeWidth={1.75} />
+              </div>
               <CardTitle className="mb-2">1. Upload</CardTitle>
               <p className="text-gray-600">
                 Upload your lecture files (PDF, DOCX, or TXT)
@@ -66,9 +101,11 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          <Card hover className="text-center">
-            <CardContent>
-              <div className="text-4xl mb-4">🤖</div>
+          <Card hover className="text-center border-slate-100 shadow-sm">
+            <CardContent className="pt-8 pb-8">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
+                <Sparkles className="h-7 w-7" strokeWidth={1.75} />
+              </div>
               <CardTitle className="mb-2">2. Generate</CardTitle>
               <p className="text-gray-600">
                 AI analyzes content and creates quiz questions
@@ -76,9 +113,11 @@ export default function HomePage() {
             </CardContent>
           </Card>
 
-          <Card hover className="text-center">
-            <CardContent>
-              <div className="text-4xl mb-4">📥</div>
+          <Card hover className="text-center border-slate-100 shadow-sm">
+            <CardContent className="pt-8 pb-8">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-xl bg-primary-100 text-primary-700">
+                <Download className="h-7 w-7" strokeWidth={1.75} />
+              </div>
               <CardTitle className="mb-2">3. Export</CardTitle>
               <p className="text-gray-600">
                 Download QTI format ready for Canvas LMS
@@ -91,18 +130,18 @@ export default function HomePage() {
       {/* Benefits Section */}
       <section className="bg-gray-50 py-20">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl font-bold text-center mb-12">
+          <h2 className="text-3xl font-bold text-center text-gray-900 mb-12">
             Why Choose QuizFlow AI?
           </h2>
           <div className="grid md:grid-cols-2 gap-8">
             <div className="flex gap-4">
               <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">⚡</span>
+                <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center text-primary-700">
+                  <Zap className="h-6 w-6" strokeWidth={1.75} />
                 </div>
               </div>
               <div>
-                <h3 className="text-xl font-semibold mb-2">Save Time</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Save Time</h3>
                 <p className="text-gray-600">
                   Generate quizzes in minutes instead of hours. Focus on teaching,
                   not quiz creation.
@@ -112,12 +151,12 @@ export default function HomePage() {
 
             <div className="flex gap-4">
               <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">🎯</span>
+                <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center text-primary-700">
+                  <Target className="h-6 w-6" strokeWidth={1.75} />
                 </div>
               </div>
               <div>
-                <h3 className="text-xl font-semibold mb-2">High Quality</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">High Quality</h3>
                 <p className="text-gray-600">
                   Powered by GPT-4, ensuring accurate and relevant questions
                   based on your content.
@@ -127,12 +166,12 @@ export default function HomePage() {
 
             <div className="flex gap-4">
               <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">🔌</span>
+                <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center text-primary-700">
+                  <Plug2 className="h-6 w-6" strokeWidth={1.75} />
                 </div>
               </div>
               <div>
-                <h3 className="text-xl font-semibold mb-2">Canvas Compatible</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Canvas Compatible</h3>
                 <p className="text-gray-600">
                   Export to QTI 2.1 format for seamless import into Canvas LMS
                   and other platforms.
@@ -142,15 +181,16 @@ export default function HomePage() {
 
             <div className="flex gap-4">
               <div className="flex-shrink-0">
-                <div className="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center">
-                  <span className="text-2xl">💰</span>
+                <div className="w-12 h-12 bg-primary-100 rounded-xl flex items-center justify-center text-primary-700">
+                  <WalletCards className="h-6 w-6" strokeWidth={1.75} />
                 </div>
               </div>
               <div>
-                <h3 className="text-xl font-semibold mb-2">Free to Start</h3>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">Predictable plans</h3>
                 <p className="text-gray-600">
-                  Try it free with 1 upload per week. Upgrade to Pro for unlimited
-                  access.
+                  Start free with weekly limits. Pro raises caps for uploads and AI
+                  quiz generations—designed for real classroom volume, not open-ended
+                  abuse.
                 </p>
               </div>
             </div>
@@ -167,11 +207,19 @@ export default function HomePage() {
           <p className="text-xl mb-8 opacity-90">
             Join hundreds of educators saving time with AI-powered quiz generation
           </p>
-          <Link href="/register">
-            <Button size="lg" variant="secondary">
-              Create Free Account
-            </Button>
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Link href="/register">
+              <Button size="lg" variant="secondary">
+                Create Free Account
+              </Button>
+            </Link>
+            <Link
+              href="/login"
+              className="inline-flex items-center justify-center rounded-lg border-2 border-white px-6 py-3 text-base font-semibold text-white hover:bg-white/15 transition-colors focus:outline-none focus:ring-2 focus:ring-white focus:ring-offset-2 focus:ring-offset-primary-600"
+            >
+              Log in
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -180,9 +228,15 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center">
             <p className="text-gray-400">
-              © 2024 QuizFlow AI. All rights reserved.
+              © 2026 QuizFlow AI. All rights reserved.
             </p>
-            <div className="mt-4 space-x-6">
+            <div className="mt-4 flex flex-wrap justify-center gap-x-6 gap-y-2">
+              <Link href="/login" className="text-gray-300 hover:text-white font-medium">
+                Log in
+              </Link>
+              <Link href="/register" className="text-gray-300 hover:text-white font-medium">
+                Sign up
+              </Link>
               <Link href="/privacy" className="text-gray-400 hover:text-white">
                 Privacy Policy
               </Link>

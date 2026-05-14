@@ -1,0 +1,24 @@
+# Local PostgreSQL for QuizFlow API (Prisma).
+# Usage: docker compose up -d
+# Then copy apps/api/.env.example → apps/api/.env and run migrations (see README).
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: quizflow
+    ports:
+      - '5432:5432'
+    volumes:
+      - quizflow_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres -d quizflow']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  quizflow_pgdata:

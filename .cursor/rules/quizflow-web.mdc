@@ -1,0 +1,13 @@
+---
+description: Next.js web app (App Router, React Query, UI)
+globs: apps/web/**/*.{ts,tsx}
+alwaysApply: false
+---
+
+# Web conventions
+
+- **Router**: Use the App Router under `src/app/`. Prefer server/client split where Next.js expects it (`'use client'` only when needed).
+- **API calls**: Use the shared axios instance from `src/lib/axios.ts`. Base URL comes from `NEXT_PUBLIC_API_URL` (fallback `http://localhost:5000`).
+- **Types**: Import shared contracts from `@quizflow/types` for forms and API payloads so the UI stays aligned with the backend.
+- **Styling**: Tailwind + existing UI primitives in `src/components/ui/`. Match spacing, typography, and patterns used on nearby pages.
+- **Stripe**: Client publishable key is `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` (also referenced in `next.config.mjs`).

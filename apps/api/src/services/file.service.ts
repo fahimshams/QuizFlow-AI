@@ -10,13 +10,13 @@
  */
 
 import fs from 'fs/promises';
-import path from 'path';
 import { AppError } from '@/middleware/errorHandler.js';
 import { prisma } from '@/config/database.js';
-import { env } from '@/config/env.js';
+import type { Prisma } from '@prisma/client';
 import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
 import { FileType, UploadStatus } from '@prisma/client';
+import { PLAN_LIMITS, subscriptionPlanFromDb } from '@quizflow/types';
 
 /**
  * Process uploaded file and extract text
@@ -189,17 +189,51 @@ export const deleteFileUpload = async (fileId: string, userId: string) => {
 };
 
 /**
- * Check usage limits
+ * Check upload limit (rolling 7 days).
+ *
+ * Uses completed {@link FileUpload} rows as the source of truth so limits match
+ * what users see. Counting raw {@link UsageRecord} UPLOAD events could block users
+ * when usage exists without a visible document (e.g. legacy data) or hide why the
+ * cap applied because the UI only listed quizzes, not files.
  */
 export const checkUploadLimit = async (userId: string): Promise<boolean> => {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new AppError(404, 'User not found');
+  }
+
+  const windowStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+  const tier = subscriptionPlanFromDb(String(user.plan));
+  const limit = PLAN_LIMITS[tier].uploadsPerWeek;
+
+  const completedUploadCount = await prisma.fileUpload.count({
+    where: {
+      userId,
+      status: UploadStatus.COMPLETED,
+      createdAt: { gte: windowStart },
+    },
+  });
+
+  return completedUploadCount < limit;
+};
+
+/**
+ * Quiz generation / regeneration limit (rolling 7 days)
+ */
+export const checkQuizGenerationLimit = async (
+  userId: string
+): Promise<boolean> => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
     include: {
       usage: {
         where: {
-          action: 'UPLOAD',
+          action: 'QUIZ_GENERATION',
           createdAt: {
-            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), // Last 7 days
+            gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
           },
         },
       },
@@ -210,13 +244,9 @@ export const checkUploadLimit = async (userId: string): Promise<boolean> => {
     throw new AppError(404, 'User not found');
   }
 
-  // Free plan: 1 upload per week
-  if (user.plan === 'FREE') {
-    return user.usage.length < 1;
-  }
-
-  // Pro plan: unlimited
-  return true;
+  const tier = subscriptionPlanFromDb(String(user.plan));
+  const limit = PLAN_LIMITS[tier].quizGenerationsPerWeek;
+  return user.usage.length < limit;
 };
 
 /**
@@ -224,7 +254,8 @@ export const checkUploadLimit = async (userId: string): Promise<boolean> => {
  */
 export const recordUsage = async (
   userId: string,
-  action: 'UPLOAD' | 'QUIZ_GENERATION' | 'QTI_EXPORT'
+  action: 'UPLOAD' | 'QUIZ_GENERATION' | 'QTI_EXPORT',
+  metadata?: Record<string, unknown>
 ) => {
   const user = await prisma.user.findUnique({
     where: { id: userId },
@@ -239,6 +270,10 @@ export const recordUsage = async (
       userId,
       action,
       plan: user.plan,
+      metadata:
+        metadata !== undefined
+          ? (metadata as Prisma.InputJsonValue)
+          : undefined,
     },
   });
 };

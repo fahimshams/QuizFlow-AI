@@ -22,6 +22,38 @@ const generateQuizSchema = {
   }),
 };
 
+const quizQuestionSchema = z
+  .object({
+    question: z.string().min(1, 'Question text is required'),
+    options: z.array(z.string().min(1)).min(2, 'At least two options'),
+    correctAnswer: z.string().min(1),
+    explanation: z.string().optional(),
+  })
+  .superRefine((row, ctx) => {
+    if (!row.options.includes(row.correctAnswer)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'correctAnswer must match one of the options',
+        path: ['correctAnswer'],
+      });
+    }
+  });
+
+const updateQuizSchema = {
+  params: commonSchemas.id,
+  body: z.object({
+    title: z.string().min(1).max(200).optional(),
+    questions: z.array(quizQuestionSchema).min(1),
+  }),
+};
+
+const regenerateQuizSchema = {
+  params: commonSchemas.id,
+  body: z.object({
+    questionCount: z.number().int().min(1).max(30).optional(),
+  }),
+};
+
 // Routes
 router.post(
   '/',
@@ -32,6 +64,18 @@ router.post(
 router.get(
   '/',
   quizController.getQuizzes
+);
+
+router.post(
+  '/:id/regenerate',
+  validate(regenerateQuizSchema),
+  quizController.regenerateQuiz
+);
+
+router.patch(
+  '/:id',
+  validate(updateQuizSchema),
+  quizController.updateQuiz
 );
 
 router.get(

@@ -78,6 +78,53 @@ export const getQuizById = asyncHandler(async (req: Request, res: Response) => {
 });
 
 /**
+ * PATCH /api/quiz/:id
+ * Update quiz questions (and optional title); rebuilds QTI.
+ */
+export const updateQuiz = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new AppError(401, 'User not authenticated');
+  }
+
+  const { questions, title } = req.body;
+  const result = await quizService.updateQuizQuestions(
+    req.params.id,
+    req.user.id,
+    questions,
+    title
+  );
+
+  res.status(200).json({
+    success: true,
+    message: 'Quiz updated',
+    data: result,
+  });
+});
+
+/**
+ * POST /api/quiz/:id/regenerate
+ * Regenerate questions with AI; rebuilds QTI.
+ */
+export const regenerateQuiz = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new AppError(401, 'User not authenticated');
+  }
+
+  const { questionCount } = req.body;
+  const result = await quizService.regenerateQuizWithAI(
+    req.params.id,
+    req.user.id,
+    questionCount
+  );
+
+  res.status(200).json({
+    success: true,
+    message: 'Quiz regenerated',
+    data: result,
+  });
+});
+
+/**
  * DELETE /api/quiz/:id
  * Delete quiz
  */

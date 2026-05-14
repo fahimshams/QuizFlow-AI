@@ -13,7 +13,7 @@
 
 ### Backend (Express)
 - **Node.js + Express** with TypeScript
-- **MongoDB** with Prisma ORM
+- **PostgreSQL** with Prisma ORM (Azure Database for PostgreSQL–compatible)
 - **OpenAI API** for quiz generation
 - **Stripe** for subscription management
 - **QTI 2.1** XML generation
@@ -27,6 +27,7 @@
 
 ```
 quizflow-ai/
+├── docker-compose.yml   # Local PostgreSQL (dev)
 ├── apps/
 │   ├── web/          # Next.js frontend
 │   └── api/          # Express backend
@@ -43,7 +44,7 @@ quizflow-ai/
 ### Prerequisites
 - **Node.js** >= 18.0.0
 - **pnpm** >= 8.0.0
-- **MongoDB** (local or Atlas)
+- **Docker Desktop** (or Docker Engine + Compose) for a local PostgreSQL instance
 - **OpenAI API Key**
 - **Stripe Account** (test mode)
 
@@ -58,11 +59,43 @@ pnpm install
 
 # Set up environment variables
 cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env
+cp apps/web/.env.example apps/web/.env.local
+```
 
-# Run development servers
+### Local PostgreSQL (Docker)
+
+Use the included Compose file so your `DATABASE_URL` in `apps/api/.env` matches a known-good local database (same credentials as `apps/api/.env.example`).
+
+```bash
+# Start PostgreSQL 16 (listens on localhost:5432)
+pnpm db:up
+
+# Apply Prisma migrations and generate the client
+pnpm db:migrate
+pnpm --filter @quizflow/api prisma:generate
+
+# Optional: seed dev users (see apps/api/prisma/seed.ts)
+pnpm db:seed
+
+# API + web
 pnpm dev
 ```
+
+Stop the database container when finished: `pnpm db:down`. Data is kept in the Docker volume until you remove it.
+
+### Azure PostgreSQL (after local testing)
+
+1. Create **Azure Database for PostgreSQL Flexible Server** and a database (for example `quizflow`).
+2. In **Networking**, allow your app host (Azure App Service outbound IPs, your office IP for testing, etc.).
+3. Set `DATABASE_URL` in **production** `apps/api` settings to your Azure connection string, including TLS, for example:
+
+   `postgresql://USER@SERVERNAME:PASSWORD@HOST.postgres.database.azure.com:5432/quizflow?sslmode=require`
+
+4. From CI or a release step (with `DATABASE_URL` pointing at Azure), run:
+
+   `pnpm --filter @quizflow/api exec prisma migrate deploy`
+
+   Do **not** use `prisma migrate dev` against production; it is for local schema iteration only.
 
 The frontend will be at `http://localhost:3000`  
 The backend will be at `http://localhost:5000`
@@ -75,7 +108,11 @@ pnpm build        # Build all apps for production
 pnpm lint         # Lint all apps
 pnpm format       # Format code with Prettier
 pnpm type-check   # Type check TypeScript
-pnpm test         # Run all tests
+pnpm db:up        # Start local PostgreSQL (Docker Compose)
+pnpm db:down      # Stop local PostgreSQL
+pnpm db:migrate   # Apply Prisma migrations to the DB in DATABASE_URL
+pnpm db:seed      # Run Prisma seed (apps/api)
+pnpm db:studio    # Open Prisma Studio for apps/api
 ```
 
 ## 🏗️ Features

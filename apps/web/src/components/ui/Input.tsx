@@ -33,6 +33,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
           id={inputId}
           className={clsx(
             'w-full px-4 py-2 border rounded-lg transition-all duration-200',
+            'bg-white text-gray-900 placeholder:text-gray-400',
             'focus:ring-2 focus:ring-primary-500 focus:border-transparent',
             'disabled:bg-gray-100 disabled:cursor-not-allowed',
             error

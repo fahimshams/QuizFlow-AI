@@ -9,7 +9,7 @@
  */
 
 import { Request, Response } from 'express';
-import { asyncHandler } from '@/middleware/errorHandler.js';
+import { asyncHandler, AppError } from '@/middleware/errorHandler.js';
 import * as authService from '@/services/auth.service.js';
 import { logger } from '@/config/logger.js';
 
@@ -92,7 +92,7 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
  */
 export const getProfile = asyncHandler(async (req: Request, res: Response) => {
   if (!req.user) {
-    throw new Error('User not authenticated');
+    throw new AppError(401, 'User not authenticated');
   }
 
   const user = await authService.getUserById(req.user.id);
@@ -100,6 +100,55 @@ export const getProfile = asyncHandler(async (req: Request, res: Response) => {
   res.status(200).json({
     success: true,
     data: user,
+  });
+});
+
+/**
+ * PATCH /api/auth/profile
+ */
+export const updateProfile = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new AppError(401, 'User not authenticated');
+  }
+
+  const { name, email } = req.body as { name?: string; email?: string };
+
+  const user = await authService.updateUserProfile(req.user.id, { name, email });
+
+  logger.info('User profile updated', { userId: req.user.id });
+
+  res.status(200).json({
+    success: true,
+    message: 'Profile updated',
+    data: user,
+  });
+});
+
+/**
+ * POST /api/auth/password
+ */
+export const changePassword = asyncHandler(async (req: Request, res: Response) => {
+  if (!req.user) {
+    throw new AppError(401, 'User not authenticated');
+  }
+
+  const { currentPassword, newPassword } = req.body as {
+    currentPassword: string;
+    newPassword: string;
+  };
+
+  await authService.changeUserPassword(
+    req.user.id,
+    currentPassword,
+    newPassword
+  );
+
+  logger.info('User password changed', { userId: req.user.id });
+
+  res.status(200).json({
+    success: true,
+    message:
+      'Password updated. Please sign in again (existing sessions were signed out).',
   });
 });
 

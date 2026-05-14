@@ -47,9 +47,6 @@ Thumbs.db
 apps/api/uploads/
 apps/api/temp/
 
-# Prisma
-apps/api/prisma/migrations/
-
 # Misc
 *.pem
 .vercel
