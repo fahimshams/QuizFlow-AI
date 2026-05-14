@@ -9,7 +9,7 @@ import { uploadLimiter } from '@/middleware/rateLimiter.js';
 import { upload } from '@/config/multer.js';
 import { validate, commonSchemas } from '@/middleware/validation.js';
 
-const router = Router();
+const router: Router = Router();
 
 // All routes require authentication
 router.use(authenticate);

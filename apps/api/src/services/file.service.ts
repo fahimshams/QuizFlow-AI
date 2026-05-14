@@ -12,10 +12,10 @@
 import fs from 'fs/promises';
 import { AppError } from '@/middleware/errorHandler.js';
 import { prisma } from '@/config/database.js';
-import type { Prisma } from '@prisma/client';
+import { logger } from '@/config/logger.js';
 import pdfParse from 'pdf-parse';
 import mammoth from 'mammoth';
-import { FileType, UploadStatus } from '@prisma/client';
+import { FileType, UploadStatus, type Prisma } from '@prisma/client';
 import { PLAN_LIMITS, subscriptionPlanFromDb } from '@quizflow/types';
 
 /**
@@ -179,7 +179,7 @@ export const deleteFileUpload = async (fileId: string, userId: string) => {
     await fs.unlink(fileUpload.filePath);
   } catch (error) {
     // Log error but don't fail (file might already be deleted)
-    console.error('Error deleting file:', error);
+    logger.error('Error deleting file', error);
   }
 
   // Delete database record

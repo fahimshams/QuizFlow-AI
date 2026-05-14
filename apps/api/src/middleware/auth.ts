@@ -9,12 +9,12 @@
  */
 
 import { Request, Response, NextFunction } from 'express';
-import jwt from 'jsonwebtoken';
+import jwt, { type SignOptions } from 'jsonwebtoken';
 import { env } from '@/config/env.js';
 import { AppError } from './errorHandler.js';
 import { User, UserRole } from '@quizflow/types';
 
-// Extend Express Request type to include user
+/* eslint-disable @typescript-eslint/no-namespace -- Express `Request` augmentation (standard pattern). */
 declare global {
   namespace Express {
     interface Request {
@@ -22,6 +22,7 @@ declare global {
     }
   }
 }
+/* eslint-enable @typescript-eslint/no-namespace */
 
 interface JWTPayload {
   userId: string;
@@ -91,13 +92,16 @@ export const authorize = (...roles: UserRole[]) => {
  * Generate JWT tokens
  */
 export const generateTokens = (payload: JWTPayload) => {
-  const accessToken = jwt.sign(payload, env.JWT_ACCESS_SECRET, {
-    expiresIn: env.JWT_ACCESS_EXPIRES,
-  });
+  const accessOpts: SignOptions = {
+    expiresIn: env.JWT_ACCESS_EXPIRES as SignOptions['expiresIn'],
+  };
+  const refreshOpts: SignOptions = {
+    expiresIn: env.JWT_REFRESH_EXPIRES as SignOptions['expiresIn'],
+  };
 
-  const refreshToken = jwt.sign(payload, env.JWT_REFRESH_SECRET, {
-    expiresIn: env.JWT_REFRESH_EXPIRES,
-  });
+  const accessToken = jwt.sign(payload, env.JWT_ACCESS_SECRET, accessOpts);
+
+  const refreshToken = jwt.sign(payload, env.JWT_REFRESH_SECRET, refreshOpts);
 
   return { accessToken, refreshToken };
 };

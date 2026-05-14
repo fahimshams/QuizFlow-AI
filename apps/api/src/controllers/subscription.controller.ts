@@ -64,9 +64,10 @@ export const createPortal = asyncHandler(
  */
 export const handleWebhook = asyncHandler(
   async (req: Request, res: Response) => {
-    const signature = req.headers['stripe-signature'];
+    const rawSig = req.headers['stripe-signature'];
+    const signature = Array.isArray(rawSig) ? rawSig[0] : rawSig;
 
-    if (!signature) {
+    if (!signature || typeof signature !== 'string') {
       throw new AppError(400, 'Missing stripe signature');
     }
 

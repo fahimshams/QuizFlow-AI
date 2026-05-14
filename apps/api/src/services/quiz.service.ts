@@ -9,17 +9,14 @@
  */
 
 import { prisma } from '@/config/database.js';
+import type { Prisma } from '@prisma/client';
 import { AppError } from '@/middleware/errorHandler.js';
 import { logger } from '@/config/logger.js';
 import { env } from '@/config/env.js';
 import * as openaiService from './openai.service.js';
 import * as qtiService from './qti.service.js';
 import * as fileService from './file.service.js';
-import {
-  PLAN_LIMITS,
-  SubscriptionPlan,
-  subscriptionPlanFromDb,
-} from '@quizflow/types';
+import { PLAN_LIMITS, subscriptionPlanFromDb } from '@quizflow/types';
 import type { QuizQuestion } from '@quizflow/types';
 
 function qtiPublicUrl(relativePath: string): string {
@@ -111,7 +108,7 @@ export const generateQuiz = async (options: GenerateQuizOptions) => {
       userId,
       fileUploadId: fileId,
       title: title || fileUpload.originalName,
-      questions: questions as any, // Prisma JSON type
+      questions: questions as unknown as Prisma.InputJsonValue,
       questionCount: questions.length,
       qtiFilePath,
       qtiFileUrl,
@@ -233,7 +230,7 @@ export const updateQuizQuestions = async (
     where: { id: quizId },
     data: {
       title: displayTitle,
-      questions: questions as object[],
+      questions: questions as unknown as Prisma.InputJsonValue,
       questionCount: questions.length,
       qtiFilePath,
       qtiFileUrl,
@@ -314,7 +311,7 @@ export const regenerateQuizWithAI = async (
   const updated = await prisma.quiz.update({
     where: { id: quizId },
     data: {
-      questions: questions as object[],
+      questions: questions as unknown as Prisma.InputJsonValue,
       questionCount: questions.length,
       qtiFilePath,
       qtiFileUrl,

@@ -22,7 +22,7 @@ import { logger } from '@/config/logger.js';
 import { SubscriptionPlan } from '@prisma/client';
 
 const stripe = new Stripe(env.STRIPE_SECRET_KEY, {
-  apiVersion: '2024-11-20.acacia',
+  apiVersion: '2023-10-16',
 });
 
 /**

@@ -9,7 +9,7 @@ import { authenticate } from '@/middleware/auth.js';
 import { validate } from '@/middleware/validation.js';
 import { z } from 'zod';
 
-const router = Router();
+const router: Router = Router();
 
 // Validation schemas
 const checkoutSchema = {

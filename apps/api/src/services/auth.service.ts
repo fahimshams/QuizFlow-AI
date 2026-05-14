@@ -12,7 +12,16 @@ import bcrypt from 'bcryptjs';
 import { prisma } from '@/config/database.js';
 import { AppError } from '@/middleware/errorHandler.js';
 import { generateTokens, verifyRefreshToken } from '@/middleware/auth.js';
-import { User, UserRole, SubscriptionPlan } from '@prisma/client';
+import {
+  User,
+  UserRole as PrismaUserRole,
+  SubscriptionPlan,
+} from '@prisma/client';
+import { UserRole as JwtUserRole } from '@quizflow/types';
+
+function prismaRoleToJwtRole(role: PrismaUserRole): JwtUserRole {
+  return role === PrismaUserRole.ADMIN ? JwtUserRole.ADMIN : JwtUserRole.USER;
+}
 
 /**
  * Register new user
@@ -40,7 +49,7 @@ export const registerUser = async (
       email,
       password: hashedPassword,
       name,
-      role: UserRole.USER,
+      role: PrismaUserRole.USER,
       plan: SubscriptionPlan.FREE,
     },
   });
@@ -49,7 +58,7 @@ export const registerUser = async (
   const tokens = generateTokens({
     userId: user.id,
     email: user.email,
-    role: user.role,
+    role: prismaRoleToJwtRole(user.role),
   });
 
   // Store refresh token
@@ -62,7 +71,8 @@ export const registerUser = async (
   });
 
   // Remove password from response
-  const { password: _, ...userWithoutPassword } = user;
+  const { password: passwordHash, ...userWithoutPassword } = user;
+  void passwordHash;
 
   return { user: userWithoutPassword, tokens };
 };
@@ -94,7 +104,7 @@ export const loginUser = async (
   const tokens = generateTokens({
     userId: user.id,
     email: user.email,
-    role: user.role,
+    role: prismaRoleToJwtRole(user.role),
   });
 
   // Store refresh token
@@ -107,7 +117,8 @@ export const loginUser = async (
   });
 
   // Remove password from response
-  const { password: _, ...userWithoutPassword } = user;
+  const { password: passwordHash, ...userWithoutPassword } = user;
+  void passwordHash;
 
   return { user: userWithoutPassword, tokens };
 };
@@ -170,7 +181,8 @@ export const getUserById = async (userId: string): Promise<Omit<User, 'password'
     throw new AppError(404, 'User not found');
   }
 
-  const { password: _, ...userWithoutPassword } = user;
+  const { password: passwordHash, ...userWithoutPassword } = user;
+  void passwordHash;
   return userWithoutPassword;
 };
 
@@ -206,7 +218,8 @@ export const updateUserProfile = async (
     data,
   });
 
-  const { password: _, ...rest } = user;
+  const { password: passwordHash, ...rest } = user;
+  void passwordHash;
   return rest;
 };
 

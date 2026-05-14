@@ -8,7 +8,7 @@ import { authenticate } from '@/middleware/auth.js';
 import { validate, commonSchemas } from '@/middleware/validation.js';
 import { z } from 'zod';
 
-const router = Router();
+const router: Router = Router();
 
 // All routes require authentication
 router.use(authenticate);

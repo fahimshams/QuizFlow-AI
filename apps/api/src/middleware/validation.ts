@@ -41,13 +41,10 @@ export const validate = (schema: {
       next();
     } catch (error) {
       if (error instanceof ZodError) {
-        // Format Zod errors nicely
-        const errors = error.errors.map((err) => ({
-          field: err.path.join('.'),
-          message: err.message,
-        }));
-
-        throw new AppError(400, 'Validation failed', true);
+        const detail = error.errors
+          .map((err) => `${err.path.join('.')}: ${err.message}`)
+          .join('; ');
+        throw new AppError(400, `Validation failed (${detail})`, true);
       }
       next(error);
     }

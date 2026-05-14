@@ -161,7 +161,6 @@ function generateQuestionXML(
   const responses = question.options
     .map((option, optIndex) => {
       const optionId = `option_${optIndex + 1}`;
-      const isCorrect = option === question.correctAnswer;
 
       return `
       <response_label ident="${optionId}">
